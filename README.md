@@ -3,7 +3,7 @@
 Proyecto en parejas de **Desarrollo de Aplicaciones Móviles** (UTNG), hecho con Flutter y Material 3.
 Primer cliente: **Rimbaud's Coffee**. La app sirve para **cualquier cafetería**: cada negocio pone su nombre, logo, menú, mesas y usuarios.
 
-> Los datos se guardan en el dispositivo (`shared_preferences`), así que la app funciona sin internet.
+> Los datos se guardan en una **base de datos SQLite** dentro del dispositivo (`rim_coffee.db`), así que la app funciona sin internet.
 > Las contraseñas y los códigos se guardan cifrados (SHA-256 con sal).
 
 ---
@@ -113,7 +113,30 @@ Guardadas en `screenshots/`:
 ![11](screenshots/11-foto-equipo.png)
 ![12](screenshots/12-navegacion.png)
 
-## 5. Estructura
+## 5. Base de datos (SQLite)
+
+Archivo `rim_coffee.db` en el dispositivo, paquete `sqflite`. El esquema está en `lib/core/storage/esquema.dart`.
+
+| Tabla | Llave | Contenido |
+|---|---|---|
+| `negocio` | `id` (1) | nombre, correo, huella y sal de la contraseña, correo de Google, eslogan, logo |
+| `usuarios` | `id` | nombre, rol (beneficiario/administrador), huella y sal del código, activo, permisos |
+| `configuracion` | `id` (1) | teléfono, horario |
+| `mesas` | `numero` | mesas del negocio |
+| `categorias` | `id` | categorías del menú y si llevan tamaños |
+| `productos` | `id` | nombre, descripción, precio, categoría, imagen, disponible |
+| `cuentas` | `id` | cuenta de una mesa: titular, quién atendió y cobró, estado, total, fechas |
+| `pedidos` | `id` | ronda de una cuenta (`cuentaId → cuentas.id`): cliente, estado, notas, fechas |
+| `pedido_items` | `pedidoId, posicion` | productos de cada pedido (`pedidoId → pedidos.id`): cantidad, subtotal, detalle |
+| `carrito` | `posicion` | carrito del cliente en curso (`producto → productos.id`) |
+| `ajustes` | `clave` | sesión, turno y modo Cliente |
+
+Cada tabla tiene además `extra` (JSON) para que un campo nuevo o antiguo nunca se pierda. Hay índices para cuentas por estado y pedidos por cuenta.
+Al arrancar, los datos se cargan a memoria (las pantallas responden al instante) y cada cambio se escribe en la base en segundo plano, en orden y dentro de una transacción, tocando solo las filas que cambiaron.
+*Panel → Seguridad → Base de datos* muestra cuántas filas tiene cada tabla. La primera vez que se abre esta versión, los datos de la versión anterior se copian solos a la base.
+En la versión web (sin SQLite) se usa el almacenamiento local del navegador.
+
+## 6. Estructura
 
 ```
 lib/
@@ -128,12 +151,12 @@ lib/
     └── shared/    productos, formularios de usuario y código, permisos, logo
 ```
 
-Capas: presentación (`features/`) → lógica (`core/state`, `core/services`) → datos (`core/storage`).
+Capas: presentación (`features/`) → lógica (`core/state`, `core/services`) → datos (`core/storage`: esquema SQLite y motores).
 El patrón Observer es `ChangeNotifier` + `ListenableBuilder`. Pruebas en `test/` (`flutter test`).
 
-## 6. Limitaciones
+## 7. Limitaciones
 
-- Sin servidor: los datos viven en el dispositivo. Hay respaldo manual (*Panel → Seguridad → Exportar/Importar*).
+- Sin servidor: la base de datos vive en el dispositivo. Hay respaldo manual (*Panel → Seguridad → Exportar/Importar*).
 - Un negocio por dispositivo. Para usar otra tablet, exporta el respaldo e impórtalo allá.
 - Google se usa solo para identificar al dueño de la cuenta. No sincroniza datos entre dispositivos.
 - La llave de firma `tool/firma/debug.keystore` es para pruebas. Para Play Store hace falta una llave de publicación propia.

@@ -7,6 +7,7 @@ import 'package:rim_coffee/core/services/respaldo_service.dart';
 import 'package:rim_coffee/core/state/app_bootstrap.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
+import 'package:rim_coffee/core/storage/app_storage.dart';
 import 'package:rim_coffee/core/utils/validadores.dart';
 import 'package:rim_coffee/core/widgets/widgets.dart';
 import 'package:rim_coffee/features/dueno/salir_panel.dart';
@@ -233,6 +234,8 @@ class SeguridadScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 14),
+          const _BaseDatos(),
+          const SizedBox(height: 14),
           _Grupo(
             titulo: 'Respaldo',
             hijos: [
@@ -451,6 +454,90 @@ class _ContrasenaDialogState extends State<_ContrasenaDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(onPressed: _guardar, child: const Text('Guardar')),
+      ],
+    );
+  }
+}
+
+/// Estado de la base de datos: motor y filas por tabla.
+class _BaseDatos extends StatefulWidget {
+  const _BaseDatos();
+
+  @override
+  State<_BaseDatos> createState() => _BaseDatosState();
+}
+
+class _BaseDatosState extends State<_BaseDatos> {
+  late Future<Map<String, int>> _conteo = AppStorage.conteoTablas();
+
+  static const Map<String, String> _nombres = {
+    'negocio': 'Negocio',
+    'usuarios': 'Usuarios',
+    'configuracion': 'Configuración',
+    'mesas': 'Mesas',
+    'categorias': 'Categorías',
+    'productos': 'Productos',
+    'cuentas': 'Cuentas',
+    'pedidos': 'Pedidos',
+    'pedido_items': 'Productos pedidos',
+    'carrito': 'Carrito',
+    'ajustes': 'Ajustes',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return _Grupo(
+      titulo: 'Base de datos',
+      hijos: [
+        Row(
+          children: [
+            const Icon(Icons.storage_rounded, color: AppColors.cafe),
+            const SizedBox(width: 10),
+            Expanded(child: Text(AppStorage.motor, style: AppText.title)),
+            IconButton(
+              tooltip: 'Actualizar',
+              onPressed: () => setState(() => _conteo = AppStorage.conteoTablas()),
+              icon: const Icon(Icons.refresh, color: AppColors.muted),
+            ),
+          ],
+        ),
+        FutureBuilder<Map<String, int>>(
+          future: _conteo,
+          builder: (context, snap) {
+            final datos = snap.data;
+            if (datos == null) {
+              return const Padding(
+                padding: EdgeInsets.all(8),
+                child: LinearProgressIndicator(),
+              );
+            }
+            if (datos.isEmpty) {
+              return const Text(
+                'Esta versión guarda los datos en el almacenamiento local del navegador.',
+                style: AppText.caption,
+              );
+            }
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final e in datos.entries)
+                  Chip(
+                    label: Text('${_nombres[e.key] ?? e.key}: ${e.value}'),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            );
+          },
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
+          child: Text(
+            'Filas guardadas por tabla en este dispositivo. Cada cambio se guarda '
+            'al momento, dentro de una transacción.',
+            style: AppText.caption,
+          ),
+        ),
       ],
     );
   }

@@ -7,14 +7,12 @@ import 'package:rim_coffee/core/state/usuarios_controller.dart';
 import 'package:rim_coffee/core/storage/app_storage.dart';
 import 'package:rim_coffee/core/utils/formato.dart';
 import 'package:rim_coffee/core/utils/seguridad.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    await AppStorage.init();
+    await AppStorage.initMemoria();
     NegocioController.instance.cargar();
     UsuariosController.instance.cargar();
   });
