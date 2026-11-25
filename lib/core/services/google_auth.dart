@@ -115,7 +115,8 @@ class GoogleAuth {
           'para activarlo sigue la guía GOOGLE_LOGIN.md.';
     }
     if (codigo == 7 || detalle.contains('network_error')) {
-      return 'Sin conexión a internet. Revisa la red e inténtalo de nuevo.';
+      return 'Google no pudo conectarse (código 7). Revisa el internet, que la hora del '
+          'teléfono sea automática y que Google Play Services esté actualizado.';
     }
     return 'No se pudo iniciar con Google (código ${codigo ?? detalle.split(' ').first}). '
         'Inténtalo de nuevo o usa tu correo.';

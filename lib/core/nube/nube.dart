@@ -75,7 +75,9 @@ class Nube {
         t.contains('connection') ||
         t.contains('clientexception') ||
         e is AuthRetryableFetchException) {
-      return 'Sin conexión a internet. Revisa la red e inténtalo de nuevo.';
+      final detalle = texto.length > 140 ? texto.substring(0, 140) : texto;
+      return 'No se pudo conectar con el servidor de la nube. Revisa tu internet '
+          '(si usas VPN o "DNS privado", desactívalo y prueba). Detalle: $detalle';
     }
     if (t.contains('provider is not enabled') || t.contains('unsupported provider')) {
       return 'Google todavía no está activado en Supabase (Authentication → Providers → Google).';
