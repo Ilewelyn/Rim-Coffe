@@ -212,13 +212,13 @@ class SeguridadScreen extends StatelessWidget {
               _Accion(
                 icono: Icons.upload_outlined,
                 titulo: 'Exportar datos',
-                detalle: 'Copia todo como texto para guardarlo o llevarlo a otra tablet.',
+                detalle: 'Copia todo como texto para guardarlo (WhatsApp, correo o una nota).',
                 onTap: () => _exportar(context),
               ),
               _Accion(
                 icono: Icons.download_outlined,
                 titulo: 'Importar datos',
-                detalle: 'Pega un respaldo para recuperar la información.',
+                detalle: 'Pega un respaldo para recuperar o cargar información.',
                 onTap: () => _importar(context),
               ),
               const Padding(
@@ -562,8 +562,9 @@ class _ImportarDialogState extends State<_ImportarDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Pega aquí el respaldo. Reemplaza todos los datos actuales de este '
-            'dispositivo.',
+            'Pega aquí el respaldo. Se reemplazan las secciones que traiga (negocio, '
+            'menú, mesas, usuarios, ventas…) en todos los dispositivos; lo que no '
+            'traiga se conserva.',
             style: AppText.caption,
           ),
           const SizedBox(height: 10),

@@ -42,11 +42,23 @@ class RespaldoService {
         datos[e.key] = valor;
       }
     }
-    if (!datos.containsKey('rc.v2.negocio')) {
-      return 'El respaldo no trae la cuenta del negocio.';
+    // Datos de este dispositivo que no se importan (sesión, turno, modo
+    // Cliente, carrito y cambios pendientes de subir).
+    const locales = {
+      'rc.v2.sesion',
+      'rc.v3.turno',
+      'rc.v2.modo',
+      'rc.carrito',
+      'rc.nube.pendientes',
+    };
+    datos.removeWhere((clave, _) => locales.contains(clave));
+    if (datos.isEmpty) {
+      return 'El respaldo no trae datos para importar.';
     }
-    AppStorage.reemplazarTodo(datos);
-    AppBootstrap.cargarDatos();
+    // Solo se reemplazan las secciones que trae el respaldo; lo demás se
+    // conserva. Los cambios se suben solos a la nube.
+    datos.forEach(AppStorage.escribir);
+    AppBootstrap.recargarTodo();
     return null;
   }
 }
