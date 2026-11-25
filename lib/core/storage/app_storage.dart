@@ -18,6 +18,9 @@ class AppStorage {
   static Map<String, String> _cache = {};
   static Future<void> _cola = Future<void>.value();
 
+  /// Aviso de cada cambio local (lo usa la sincronización con la nube).
+  static void Function(String clave)? alEscribir;
+
   /// Nombre del motor en uso (se muestra en Panel → Seguridad).
   static String get motor => _motor.nombre;
 
@@ -57,6 +60,16 @@ class AppStorage {
   static String? leer(String clave) => _cache[clave];
 
   static void escribir(String clave, String valor) {
+    if (_cache[clave] == valor) {
+      return;
+    }
+    _cache[clave] = valor;
+    _encolar(() => _motor.escribir(clave, valor));
+    alEscribir?.call(clave);
+  }
+
+  /// Guarda un dato que llegó de la nube (no se vuelve a subir).
+  static void escribirDesdeNube(String clave, String valor) {
     if (_cache[clave] == valor) {
       return;
     }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rim_coffee/app/route_names.dart';
 import 'package:rim_coffee/app/theme.dart';
+import 'package:rim_coffee/core/nube/acceso.dart';
+import 'package:rim_coffee/core/nube/nube.dart';
 import 'package:rim_coffee/core/services/google_auth.dart';
 import 'package:rim_coffee/core/services/respaldo_service.dart';
 import 'package:rim_coffee/core/state/app_bootstrap.dart';
@@ -75,38 +77,6 @@ class SeguridadScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _google(BuildContext context) async {
-    final negocio = NegocioController.instance;
-    if (negocio.correoGoogle.isNotEmpty) {
-      final quitar = await _confirmar(
-        context,
-        titulo: 'Desvincular Google',
-        mensaje: 'Ya no podrás entrar con ${negocio.correoGoogle}. Seguirás '
-            'entrando con correo y contraseña.',
-        boton: 'Desvincular',
-      );
-      if (quitar && context.mounted) {
-        final error = negocio.desvincularGoogle();
-        _aviso(context, error ?? 'Cuenta de Google desvinculada');
-      }
-      return;
-    }
-    final r = await GoogleAuth.elegirCuenta();
-    if (!context.mounted) {
-      return;
-    }
-    final cuenta = r.cuenta;
-    if (r.error != null) {
-      _aviso(context, r.error!);
-      return;
-    }
-    if (cuenta == null) {
-      return;
-    }
-    negocio.vincularGoogle(cuenta.correo);
-    _aviso(context, 'Listo: ya puedes entrar con ${cuenta.correo}');
-  }
-
   Future<void> _exportar(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: RespaldoService.exportar()));
     if (context.mounted) {
@@ -152,15 +122,16 @@ class SeguridadScreen extends StatelessWidget {
     final ok = await _confirmar(
       context,
       titulo: 'Borrar todos los datos',
-      mensaje: 'Se elimina todo lo guardado en este dispositivo, incluida la cuenta '
-          'del negocio y los usuarios. Después tendrás que crear el negocio otra vez. '
-          'Esto no se puede deshacer.',
-      boton: 'Borrar todo',
+      mensaje: 'Se borra todo lo guardado en ESTE dispositivo y se cierra la sesión. '
+          'Los datos en la nube se conservan: al volver a iniciar sesión se descargan.',
+      boton: 'Borrar de este dispositivo',
       peligro: true,
     );
     if (ok && context.mounted) {
+      final navegador = Navigator.of(context);
+      await AccesoNube.salir();
       AppBootstrap.borrarTodo();
-      Navigator.of(context).pushNamedAndRemoveUntil(Routes.login, (ruta) => false);
+      navegador.pushNamedAndRemoveUntil(Routes.login, (ruta) => false);
     }
   }
 
@@ -168,14 +139,14 @@ class SeguridadScreen extends StatelessWidget {
     final ok = await _confirmar(
       context,
       titulo: 'Cerrar sesión',
-      mensaje: 'Para volver a entrar necesitarás el correo y la contraseña de la '
-          'cuenta del negocio.',
+      mensaje: 'Para volver a entrar necesitarás el correo y la contraseña (o Google) '
+          'de la cuenta del negocio. Los datos se conservan en la nube.',
       boton: 'Cerrar sesión',
     );
     if (ok && context.mounted) {
-      UsuariosController.instance.cerrarTurno();
-      NegocioController.instance.cerrarSesion();
-      Navigator.of(context).pushNamedAndRemoveUntil(Routes.login, (ruta) => false);
+      final navegador = Navigator.of(context);
+      await AccesoNube.salir();
+      navegador.pushNamedAndRemoveUntil(Routes.login, (ruta) => false);
     }
   }
 
@@ -204,22 +175,21 @@ class SeguridadScreen extends StatelessWidget {
                   ),
                   _Accion(
                     icono: Icons.key_outlined,
-                    titulo: negocio.tieneContrasena
+                    titulo: Nube.tieneContrasena
                         ? 'Cambiar contraseña de la cuenta'
                         : 'Crear contraseña de la cuenta',
-                    detalle: 'Con ella se inicia sesión con ${negocio.correo}.',
+                    detalle: 'Con ella se inicia sesión con ${negocio.correo} en cualquier '
+                        'dispositivo.',
                     onTap: () => _cambiarContrasena(context),
                   ),
                   if (GoogleAuth.disponible)
-                    _Accion(
-                      icono: Icons.account_circle_outlined,
-                      titulo: negocio.correoGoogle.isEmpty
-                          ? 'Vincular cuenta de Google'
-                          : 'Google: ${negocio.correoGoogle}',
-                      detalle: negocio.correoGoogle.isEmpty
-                          ? 'Para entrar con "Continuar con Google".'
-                          : 'Toca para desvincularla.',
-                      onTap: () => _google(context),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+                      child: Text(
+                        'Entrar con Google: usa "Continuar con Google" con la cuenta '
+                        '${negocio.correo}; se vincula sola a este negocio.',
+                        style: AppText.caption,
+                      ),
                     ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(4, 4, 4, 0),
@@ -390,17 +360,26 @@ class _ContrasenaDialogState extends State<_ContrasenaDialog> {
     super.dispose();
   }
 
-  void _guardar() {
+  bool _guardando = false;
+
+  Future<void> _guardar() async {
     setState(() => _error = null);
     if (!(_formulario.currentState?.validate() ?? false)) {
       return;
     }
-    final error = NegocioController.instance.cambiarContrasena(
-      actual: _actual.text,
+    setState(() => _guardando = true);
+    final error = await Nube.cambiarContrasena(
+      actual: Nube.tieneContrasena ? _actual.text : '',
       nueva: _nueva.text,
     );
+    if (!mounted) {
+      return;
+    }
     if (error != null) {
-      setState(() => _error = error);
+      setState(() {
+        _guardando = false;
+        _error = error;
+      });
       return;
     }
     Navigator.of(context).pop(true);
@@ -408,7 +387,7 @@ class _ContrasenaDialogState extends State<_ContrasenaDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tiene = NegocioController.instance.tieneContrasena;
+    final tiene = Nube.tieneContrasena;
     return AlertDialog(
       title: Text(tiene ? 'Cambiar contraseña' : 'Crear contraseña'),
       content: SingleChildScrollView(
@@ -453,7 +432,10 @@ class _ContrasenaDialogState extends State<_ContrasenaDialog> {
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancelar'),
         ),
-        FilledButton(onPressed: _guardar, child: const Text('Guardar')),
+        FilledButton(
+          onPressed: _guardando ? null : _guardar,
+          child: Text(_guardando ? 'Guardando…' : 'Guardar'),
+        ),
       ],
     );
   }
@@ -489,6 +471,8 @@ class _BaseDatosState extends State<_BaseDatos> {
     return _Grupo(
       titulo: 'Base de datos',
       hijos: [
+        const EstadoNubeFila(),
+        const SizedBox(height: 6),
         Row(
           children: [
             const Icon(Icons.storage_rounded, color: AppColors.cafe),
@@ -533,8 +517,9 @@ class _BaseDatosState extends State<_BaseDatos> {
         const Padding(
           padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
           child: Text(
-            'Filas guardadas por tabla en este dispositivo. Cada cambio se guarda '
-            'al momento, dentro de una transacción.',
+            'Filas por tabla en la copia de este dispositivo (SQLite). Cada cambio se '
+            'guarda aquí al momento y se sube a la nube (Supabase); sin internet se '
+            'sigue trabajando y se sube al volver la conexión.',
             style: AppText.caption,
           ),
         ),

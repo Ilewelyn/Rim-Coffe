@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rim_coffee/app/route_names.dart';
+import 'package:rim_coffee/core/nube/acceso.dart';
 import 'package:rim_coffee/core/models/usuario.dart';
-import 'package:rim_coffee/core/state/negocio_controller.dart';
-import 'package:rim_coffee/core/state/sesion_cliente.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
 import 'package:rim_coffee/core/widgets/widgets.dart';
 
@@ -92,7 +91,7 @@ Future<void> cerrarSesionNegocio(BuildContext context) async {
       title: const Text('¿Cerrar sesión?'),
       content: const Text(
         'Para volver a entrar necesitarás el correo y la contraseña (o la '
-        'cuenta de Google) del negocio. Tus datos no se borran.',
+        'cuenta de Google) del negocio. Tus datos se conservan en la nube.',
       ),
       actions: [
         TextButton(
@@ -109,8 +108,6 @@ Future<void> cerrarSesionNegocio(BuildContext context) async {
   if (confirmado != true) {
     return;
   }
-  SesionCliente.instance.salir();
-  UsuariosController.instance.cerrarTurno();
-  NegocioController.instance.cerrarSesion();
+  await AccesoNube.salir();
   navegador.pushNamedAndRemoveUntil(Routes.login, (ruta) => false);
 }

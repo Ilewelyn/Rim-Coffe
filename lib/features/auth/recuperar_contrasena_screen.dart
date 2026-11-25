@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/constants/app_assets.dart';
-import 'package:rim_coffee/core/services/google_auth.dart';
-import 'package:rim_coffee/core/state/negocio_controller.dart';
-import 'package:rim_coffee/core/state/usuarios_controller.dart';
+import 'package:rim_coffee/core/nube/nube.dart';
 import 'package:rim_coffee/core/utils/validadores.dart';
 import 'package:rim_coffee/core/widgets/widgets.dart';
+import 'package:rim_coffee/features/shared/usuario_form_sheet.dart';
 
-enum _Paso { correo, verificar, nueva, listo }
-
-/// Olvidé mi contraseña. Como los datos viven en el dispositivo, para
-/// demostrar que eres el dueño de la cuenta se pide el código de un
-/// beneficiario (o la cuenta de Google vinculada). Después se crea una
-/// contraseña nueva.
+/// Olvidé mi contraseña: se escribe el correo del negocio, el código de un
+/// beneficiario y la contraseña nueva. El servidor (Supabase) comprueba el
+/// código y cambia la contraseña. Sirve desde cualquier dispositivo.
 class RecuperarContrasenaScreen extends StatefulWidget {
   const RecuperarContrasenaScreen({super.key});
 
@@ -21,81 +17,43 @@ class RecuperarContrasenaScreen extends StatefulWidget {
 }
 
 class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
-  final GlobalKey<FormState> _formCorreo = GlobalKey<FormState>();
-  final GlobalKey<FormState> _formClave = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formulario = GlobalKey<FormState>();
   final TextEditingController _correo = TextEditingController();
+  final TextEditingController _codigo = TextEditingController();
   final TextEditingController _clave = TextEditingController();
   final TextEditingController _confirmar = TextEditingController();
-  _Paso _paso = _Paso.correo;
+  bool _cargando = false;
+  bool _listo = false;
   String? _error;
 
   @override
   void dispose() {
     _correo.dispose();
+    _codigo.dispose();
     _clave.dispose();
     _confirmar.dispose();
     super.dispose();
   }
 
-  void _continuar() {
+  Future<void> _guardar() async {
     setState(() => _error = null);
-    if (!(_formCorreo.currentState?.validate() ?? false)) {
+    if (!(_formulario.currentState?.validate() ?? false)) {
       return;
     }
-    if (!NegocioController.instance.correoRegistrado(_correo.text)) {
-      setState(() => _error = 'No encontramos un negocio con ese correo en este dispositivo.');
-      return;
-    }
-    setState(() => _paso = _Paso.verificar);
-  }
-
-  String? _validarCodigo(String codigo) {
-    final usuarios = UsuariosController.instance;
-    final v = usuarios.verificar(codigo, soloBeneficiario: true);
-    if (v.resultado == ResultadoPin.correcto) {
-      setState(() => _paso = _Paso.nueva);
-      return null;
-    }
-    if (v.resultado == ResultadoPin.sinPermiso) {
-      return 'Ese código no es de un beneficiario.';
-    }
-    if (v.resultado == ResultadoPin.incorrecto) {
-      return 'Código incorrecto · intentos restantes: ${usuarios.intentosRestantes}';
-    }
-    return null;
-  }
-
-  Future<void> _verificarConGoogle() async {
-    setState(() => _error = null);
-    final r = await GoogleAuth.elegirCuenta();
+    setState(() => _cargando = true);
+    final error = await Nube.recuperarContrasena(
+      correo: _correo.text,
+      codigo: _codigo.text,
+      nueva: _clave.text,
+    );
     if (!mounted) {
       return;
     }
-    final cuenta = r.cuenta;
-    if (r.error != null) {
-      setState(() => _error = r.error);
-      return;
-    }
-    if (cuenta == null) {
-      return;
-    }
-    if (cuenta.correo == NegocioController.instance.correoGoogle) {
-      setState(() => _paso = _Paso.nueva);
-    } else {
-      setState(() => _error = 'Esa cuenta de Google no está vinculada a este negocio.');
-    }
-  }
-
-  void _guardarNueva() {
-    if (!(_formClave.currentState?.validate() ?? false)) {
-      return;
-    }
-    final ok = NegocioController.instance.restablecerContrasena(_correo.text, _clave.text);
-    if (!ok) {
-      setState(() => _error = 'No pudimos actualizar la contraseña.');
-      return;
-    }
-    setState(() => _paso = _Paso.listo);
+    setState(() {
+      _cargando = false;
+      _error = error;
+      _listo = error == null;
+    });
   }
 
   @override
@@ -108,12 +66,7 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
             constraints: const BoxConstraints(maxWidth: 520),
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-              child: switch (_paso) {
-                _Paso.correo => _pasoCorreo(),
-                _Paso.verificar => _pasoVerificar(),
-                _Paso.nueva => _pasoNueva(),
-                _Paso.listo => _pasoListo(),
-              },
+              child: _listo ? _pasoListo() : _formularioRecuperar(),
             ),
           ),
         ),
@@ -125,95 +78,49 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
     return Column(
       children: [
         const Center(
-          child: AppImage(AppAssets.recuperar, width: 140, height: 140, radius: 70),
+          child: AppImage(AppAssets.recuperar, width: 130, height: 130, radius: 65),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         Text(titulo, textAlign: TextAlign.center, style: AppText.h2),
         const SizedBox(height: 6),
         Text(texto, textAlign: TextAlign.center, style: AppText.caption),
-        const SizedBox(height: 22),
+        const SizedBox(height: 20),
       ],
     );
   }
 
-  Widget _pasoCorreo() {
+  Widget _formularioRecuperar() {
     return Form(
-      key: _formCorreo,
+      key: _formulario,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _encabezado(
             '¿Olvidaste tu contraseña?',
-            'Escribe el correo del negocio. Después confirmarás que eres el '
-                'beneficiario con tu código.',
+            'Escribe el correo del negocio y tu código de beneficiario (el que usas para '
+                'entrar a atender). Después elige una contraseña nueva.',
           ),
           RcTextField(
-            label: 'CORREO',
+            label: 'CORREO DEL NEGOCIO',
             controller: _correo,
             hint: 'nombre@correo.com',
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
             validator: Validadores.correo,
             prefixIcon: const Icon(Icons.mail_outline, color: AppColors.muted, size: 20),
           ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            AvisoError(_error!),
-          ],
-          const SizedBox(height: 20),
-          RcButton(label: 'Continuar', onPressed: _continuar),
-        ],
-      ),
-    );
-  }
-
-  Widget _pasoVerificar() {
-    final tieneGoogle = NegocioController.instance.correoGoogle.isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 8),
-        const Text('Confirma que eres el beneficiario', textAlign: TextAlign.center, style: AppText.h2),
-        const SizedBox(height: 6),
-        const Text(
-          'Escribe tu código de beneficiario.',
-          textAlign: TextAlign.center,
-          style: AppText.caption,
-        ),
-        const SizedBox(height: 18),
-        Center(child: TecladoCodigo(onEnviar: _validarCodigo)),
-        if (tieneGoogle && GoogleAuth.disponible) ...[
-          const SizedBox(height: 18),
-          BotonGoogle(
-            texto: 'Verificar con Google',
-            onPressed: _verificarConGoogle,
+          const SizedBox(height: 14),
+          CampoCodigo(
+            label: 'CÓDIGO DEL BENEFICIARIO',
+            controller: _codigo,
+            hint: '4 a 6 dígitos',
+            validator: Validadores.pin,
           ),
-        ],
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          AvisoError(_error!),
-        ],
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () => setState(() {
-            _error = null;
-            _paso = _Paso.correo;
-          }),
-          child: const Text('Usar otro correo'),
-        ),
-      ],
-    );
-  }
-
-  Widget _pasoNueva() {
-    return Form(
-      key: _formClave,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _encabezado('Crea tu nueva contraseña', 'Mínimo 6 caracteres, con letras y números.'),
+          const SizedBox(height: 14),
           RcPasswordField(
             label: 'NUEVA CONTRASEÑA',
             controller: _clave,
+            hint: 'Mínimo 6, con letras y números',
             validator: Validadores.contrasena,
             textInputAction: TextInputAction.next,
           ),
@@ -236,7 +143,12 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
             AvisoError(_error!),
           ],
           const SizedBox(height: 20),
-          RcButton(label: 'Guardar contraseña', onPressed: _guardarNueva),
+          RcButton(label: 'Cambiar contraseña', cargando: _cargando, onPressed: _guardar),
+          const SizedBox(height: 12),
+          const AvisoInfo(
+            'Si tu cuenta es de Google, no necesitas contraseña: usa "Continuar con Google". '
+            'Por seguridad solo se permiten 5 intentos por hora.',
+          ),
         ],
       ),
     );
@@ -248,7 +160,7 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
       children: [
         _encabezado(
           '¡Contraseña actualizada!',
-          'Ya puedes iniciar sesión con tu nueva contraseña.',
+          'Ya puedes iniciar sesión con tu nueva contraseña en cualquier dispositivo.',
         ),
         RcButton(
           label: 'Volver al acceso',

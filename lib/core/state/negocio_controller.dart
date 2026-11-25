@@ -2,13 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:rim_coffee/core/models/negocio.dart';
+import 'package:rim_coffee/core/nube/nube.dart';
 import 'package:rim_coffee/core/storage/app_storage.dart';
 import 'package:rim_coffee/core/utils/seguridad.dart';
 
-/// Cuenta del negocio: registro, inicio de sesión (correo y contraseña o
-/// Google), cambio de contraseña y datos que personalizan la app (nombre,
-/// eslogan y logo). La sesión se guarda: al volver a abrir la app se entra
-/// directo a la pantalla de "¿Quién atiende?".
+/// Datos de la cuenta del negocio en este dispositivo: nombre, eslogan,
+/// logo y correo. La cuenta en sí (contraseña o Google) vive en la nube
+/// (Supabase, ver `Nube`). La sesión se guarda: al volver a abrir la app se
+/// entra directo a la pantalla de "¿Quién atiende?".
 class NegocioController extends ChangeNotifier {
   NegocioController._();
 
@@ -25,7 +26,7 @@ class NegocioController extends ChangeNotifier {
   bool _migrado = false;
 
   bool get existeCuenta => negocio != null;
-  bool get estaAutenticado => negocio != null && sesionIniciada;
+  bool get estaAutenticado => negocio != null && sesionIniciada && Nube.haySesion;
   String get nombre => negocio?.nombre ?? nombreApp;
   String get correo => negocio?.correo ?? '';
   String get eslogan {
@@ -34,8 +35,14 @@ class NegocioController extends ChangeNotifier {
   }
 
   String get logo => negocio?.logo ?? '';
-  bool get tieneContrasena => negocio?.tieneContrasena ?? false;
   String get correoGoogle => negocio?.correoGoogle ?? '';
+
+  /// Vuelve a leer lo guardado (por ejemplo, cuando llegan cambios de
+  /// otro dispositivo) y avisa a las pantallas.
+  void recargar() {
+    cargar();
+    notifyListeners();
+  }
 
   void cargar() {
     final raw = AppStorage.leer(_kNegocio);
@@ -74,6 +81,9 @@ class NegocioController extends ChangeNotifier {
     }
   }
 
+  /// Marca la sesión como iniciada (después de entrar en la nube).
+  void abrirSesion() => _abrirSesion();
+
   void _abrirSesion() {
     sesionIniciada = true;
     AppStorage.escribir(_kSesion, 'si');
@@ -86,96 +96,50 @@ class NegocioController extends ChangeNotifier {
     return n != null && (n.correo == c || (n.correoGoogle.isNotEmpty && n.correoGoogle == c));
   }
 
-  /// True si el correo y la contraseña son los de la cuenta del negocio.
-  bool iniciarSesion(String correo, String contrasena) {
+  /// True si el correo y la contraseña coinciden con los guardados en este
+  /// dispositivo por una versión anterior (sin nube). Sirve para pasar ese
+  /// negocio a la nube sin pedir datos nuevos.
+  bool contrasenaLocalCorrecta(String correo, String contrasena) {
     final n = negocio;
-    if (n == null || !correoRegistrado(correo)) {
-      return false;
-    }
-    if (!Seguridad.coincide(contrasena, n.sal, n.contrasenaHuella)) {
-      return false;
-    }
-    _abrirSesion();
-    return true;
+    return n != null &&
+        correoRegistrado(correo) &&
+        Seguridad.coincide(contrasena, n.sal, n.contrasenaHuella);
   }
 
-  /// Entra con una cuenta de Google. Vale si ese correo es el de la cuenta
-  /// del negocio o el que se vinculó.
-  bool iniciarConGoogle(String correoGoogle) {
-    if (!correoRegistrado(correoGoogle)) {
-      return false;
-    }
-    _abrirSesion();
-    return true;
-  }
-
-  /// Crea la cuenta del negocio (una por dispositivo) e inicia sesión.
-  /// Con Google la contraseña es opcional. Devuelve un mensaje de error, o
-  /// null si todo salió bien.
-  String? registrar({
+  /// Guarda en este dispositivo los datos de un negocio nuevo (la cuenta
+  /// ya se creó en la nube) e inicia sesión.
+  void registrar({
     required String nombre,
     required String correo,
-    String contrasena = '',
     String correoGoogle = '',
     String eslogan = '',
     String logo = '',
   }) {
-    if (existeCuenta) {
-      return 'Este dispositivo ya tiene una cuenta del negocio. '
-          'Inicia sesión o borra los datos desde Panel → Seguridad.';
-    }
-    if (contrasena.isEmpty && correoGoogle.isEmpty) {
-      return 'Escribe una contraseña o continúa con Google.';
-    }
-    final sal = Seguridad.nuevaSal();
     negocio = Negocio(
       nombre: nombre.trim(),
       correo: correo.trim().toLowerCase(),
-      sal: sal,
-      contrasenaHuella: contrasena.isEmpty ? '' : Seguridad.huella(contrasena, sal),
+      sal: Seguridad.nuevaSal(),
       correoGoogle: correoGoogle.trim().toLowerCase(),
       eslogan: eslogan.trim(),
       logo: logo,
     );
     _guardar();
     _abrirSesion();
-    return null;
+  }
+
+  /// Ya no se guarda la contraseña en el dispositivo (la tiene la nube).
+  void olvidarContrasenaLocal() {
+    final n = negocio;
+    if (n == null || n.contrasenaHuella.isEmpty) {
+      return;
+    }
+    n.contrasenaHuella = '';
+    _guardar();
   }
 
   void cerrarSesion() {
     sesionIniciada = false;
     AppStorage.borrar(_kSesion);
-    notifyListeners();
-  }
-
-  /// Cambia la contraseña pidiendo la actual (si la cuenta ya tenía una).
-  String? cambiarContrasena({required String actual, required String nueva}) {
-    final n = negocio;
-    if (n == null) {
-      return 'No hay cuenta.';
-    }
-    if (n.tieneContrasena && !Seguridad.coincide(actual, n.sal, n.contrasenaHuella)) {
-      return 'La contraseña actual no es correcta.';
-    }
-    _fijarContrasena(n, nueva);
-    return null;
-  }
-
-  /// Pone una contraseña nueva después de verificar al beneficiario
-  /// (recuperar contraseña). False si el correo no es de la cuenta.
-  bool restablecerContrasena(String correo, String nueva) {
-    final n = negocio;
-    if (n == null || !correoRegistrado(correo)) {
-      return false;
-    }
-    _fijarContrasena(n, nueva);
-    return true;
-  }
-
-  void _fijarContrasena(Negocio n, String nueva) {
-    n.sal = Seguridad.nuevaSal();
-    n.contrasenaHuella = Seguridad.huella(nueva, n.sal);
-    _guardar();
     notifyListeners();
   }
 
@@ -188,22 +152,6 @@ class NegocioController extends ChangeNotifier {
     n.correoGoogle = correoGoogle.trim().toLowerCase();
     _guardar();
     notifyListeners();
-  }
-
-  /// Quita la cuenta de Google. Solo si hay contraseña (para no quedarse
-  /// sin forma de entrar).
-  String? desvincularGoogle() {
-    final n = negocio;
-    if (n == null) {
-      return 'No hay cuenta.';
-    }
-    if (!n.tieneContrasena) {
-      return 'Primero crea una contraseña para no quedarte sin acceso.';
-    }
-    n.correoGoogle = '';
-    _guardar();
-    notifyListeners();
-    return null;
   }
 
   void actualizarNombre(String nuevo) {

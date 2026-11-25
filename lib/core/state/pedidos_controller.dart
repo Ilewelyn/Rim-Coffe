@@ -61,6 +61,13 @@ class PedidosController extends ChangeNotifier {
 
   // ---------------------------------------------------------------- carga
 
+  /// Vuelve a leer lo guardado (por ejemplo, cuando llegan cambios de
+  /// otro dispositivo) y avisa a las pantallas.
+  void recargar() {
+    cargar();
+    notifyListeners();
+  }
+
   void cargar() {
     final rawC = AppStorage.leer(_kCuentas);
     final rawP = AppStorage.leer(_kPedidos);

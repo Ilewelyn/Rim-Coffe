@@ -157,7 +157,9 @@ class CuentaScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('El negocio', style: AppText.h3),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
+                    const EstadoNubeFila(compacta: true),
+                    const SizedBox(height: 6),
                     _Fila(icono: Icons.schedule, texto: config.horario),
                     _Fila(
                       icono: Icons.phone_outlined,

@@ -12,6 +12,7 @@ class RcButton extends StatelessWidget {
     this.style = RcButtonStyle.primary,
     this.icon,
     this.height = 54,
+    this.cargando = false,
   });
 
   final String label;
@@ -20,12 +21,22 @@ class RcButton extends StatelessWidget {
   final IconData? icon;
   final double height;
 
+  /// Muestra un indicador de carga y desactiva el botón.
+  final bool cargando;
+
   @override
   Widget build(BuildContext context) {
     final forma = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
     const texto = TextStyle(fontFamily: AppFonts.sans, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2);
 
-    final Widget contenido = icon == null
+    final onPressed = cargando ? null : this.onPressed;
+    final Widget contenido = cargando
+        ? const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.cafe),
+          )
+        : icon == null
         ? Text(label, textAlign: TextAlign.center)
         : Row(
             mainAxisSize: MainAxisSize.min,

@@ -10,10 +10,12 @@ class DetalleProductoArgs {
   final LineaCarrito? editar;
 }
 
-/// Datos para el registro cuando se viene de "Continuar con Google".
+/// Registro de un negocio cuando la persona ya entró a su cuenta en la
+/// nube (con correo o con Google) pero todavía no tiene negocio.
 class RegistroArgs {
-  const RegistroArgs({required this.correoGoogle, this.nombre = ''});
+  const RegistroArgs({required this.correo, this.correoGoogle = '', this.nombre = ''});
 
+  final String correo;
   final String correoGoogle;
   final String nombre;
 }

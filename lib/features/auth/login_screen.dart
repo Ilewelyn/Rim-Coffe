@@ -3,6 +3,8 @@ import 'package:rim_coffee/app/route_args.dart';
 import 'package:rim_coffee/app/route_names.dart';
 import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/constants/app_assets.dart';
+import 'package:rim_coffee/core/nube/acceso.dart';
+import 'package:rim_coffee/core/nube/nube.dart';
 import 'package:rim_coffee/core/services/google_auth.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/utils/validadores.dart';
@@ -31,28 +33,69 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  bool _cargando = false;
+
   void _irAlInicio() {
     Navigator.of(context).pushNamedAndRemoveUntil(Routes.home, (ruta) => false);
   }
 
-  void _entrar() {
+  /// Después de entrar a la nube: unirse al negocio, subir uno anterior o
+  /// crear uno nuevo.
+  Future<void> _continuar({String correoGoogle = '', String nombre = ''}) async {
+    final r = await AccesoNube.despuesDeEntrar();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _cargando = false;
+      _conGoogle = false;
+    });
+    switch (r.tipo) {
+      case TipoAcceso.entro:
+        _irAlInicio();
+        break;
+      case TipoAcceso.sinNegocio:
+        Navigator.of(context).pushNamed(
+          Routes.registro,
+          arguments: RegistroArgs(
+            correo: Nube.correo,
+            correoGoogle: correoGoogle,
+            nombre: nombre,
+          ),
+        );
+        break;
+      case TipoAcceso.error:
+        setState(() => _error = r.error);
+        break;
+    }
+  }
+
+  Future<void> _entrar() async {
     setState(() => _error = null);
     final valido = _formulario.currentState?.validate() ?? false;
     if (!valido) {
       return;
     }
-    final negocio = NegocioController.instance;
-    if (!negocio.existeCuenta) {
-      setState(() => _error = 'Todavía no hay un negocio en este dispositivo. Créalo primero.');
+    setState(() => _cargando = true);
+    final correo = _correo.text.trim();
+    var error = await Nube.entrar(correo, _clave.text);
+    // Negocio de una versión anterior (solo en este dispositivo): se crea
+    // su cuenta en la nube con el mismo correo y contraseña.
+    if (error == 'Correo o contraseña incorrectos.' &&
+        NegocioController.instance.contrasenaLocalCorrecta(correo, _clave.text)) {
+      error = await Nube.registrar(correo, _clave.text);
+    }
+    if (!mounted) {
       return;
     }
-    if (!negocio.iniciarSesion(_correo.text, _clave.text)) {
-      setState(() => _error = negocio.tieneContrasena
-          ? 'Correo o contraseña incorrectos.'
-          : 'Esta cuenta se creó con Google: usa "Continuar con Google".');
+    if (error != null) {
+      setState(() {
+        _cargando = false;
+        _error = error;
+      });
       return;
     }
-    _irAlInicio();
+    await _continuar();
   }
 
   Future<void> _entrarConGoogle() async {
@@ -64,29 +107,29 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) {
       return;
     }
-    setState(() => _conGoogle = false);
     final cuenta = r.cuenta;
-    if (r.error != null) {
-      setState(() => _error = r.error);
+    if (r.error != null || cuenta == null) {
+      setState(() {
+        _conGoogle = false;
+        _error = r.error;
+      });
       return;
     }
-    if (cuenta == null) {
+    final error = await Nube.entrarConGoogle(
+      idToken: cuenta.idToken,
+      accessToken: cuenta.accessToken,
+    );
+    if (!mounted) {
       return;
     }
-    final negocio = NegocioController.instance;
-    if (!negocio.existeCuenta) {
-      Navigator.of(context).pushNamed(
-        Routes.registro,
-        arguments: RegistroArgs(correoGoogle: cuenta.correo, nombre: cuenta.nombre),
-      );
+    if (error != null) {
+      setState(() {
+        _conGoogle = false;
+        _error = error;
+      });
       return;
     }
-    if (negocio.iniciarConGoogle(cuenta.correo)) {
-      _irAlInicio();
-      return;
-    }
-    setState(() => _error = 'La cuenta ${cuenta.correo} no está vinculada a este negocio. '
-        'Entra con correo y contraseña y vincúlala en Panel → Seguridad.');
+    await _continuar(correoGoogle: cuenta.correo, nombre: cuenta.nombre);
   }
 
   @override
@@ -169,12 +212,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 existeCuenta
                                     ? 'Entra con la cuenta del negocio. Después cada persona '
                                         'escribe su código para atender.'
-                                    : 'Crea tu negocio: menú, mesas y usuarios en un par de minutos.',
+                                    : 'Entra con tu cuenta para ver tu negocio en este dispositivo, '
+                                        'o crea uno nuevo.',
                                 style: AppText.caption,
                               ),
                               const SizedBox(height: 20),
                               if (GoogleAuth.disponible) ...[
-                                BotonGoogle(onPressed: _entrarConGoogle, cargando: _conGoogle),
+                                BotonGoogle(
+                                  onPressed: _cargando ? null : _entrarConGoogle,
+                                  cargando: _conGoogle,
+                                ),
                                 const SizedBox(height: 16),
                                 const Row(
                                   children: [
@@ -223,17 +270,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: const Text('¿Olvidaste tu contraseña?'),
                                 ),
                               ),
-                              RcButton(label: 'Iniciar sesión', onPressed: _entrar),
-                              if (!existeCuenta) ...[
-                                const SizedBox(height: 10),
-                                RcButton(
-                                  label: 'Crear mi negocio',
-                                  icon: Icons.storefront_outlined,
-                                  style: RcButtonStyle.outline,
-                                  onPressed: () =>
-                                      Navigator.of(context).pushNamed(Routes.registro),
-                                ),
-                              ],
+                              RcButton(
+                                label: 'Iniciar sesión',
+                                cargando: _cargando,
+                                onPressed: _conGoogle ? null : _entrar,
+                              ),
+                              const SizedBox(height: 10),
+                              RcButton(
+                                label: 'Crear mi negocio',
+                                icon: Icons.storefront_outlined,
+                                style: RcButtonStyle.outline,
+                                onPressed: _cargando || _conGoogle
+                                    ? null
+                                    : () => Navigator.of(context).pushNamed(Routes.registro),
+                              ),
                             ],
                           ),
                         ),
@@ -241,11 +291,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 18),
                       AvisoInfo(
                         existeCuenta
-                            ? 'Una cuenta por negocio. El beneficiario ve reportes y ajustes; '
-                                'los administradores atienden con su propio código.'
-                            : 'Primera vez en este dispositivo: crea tu negocio con Google o '
-                                'con correo y contraseña. Después podrás personalizar menú, '
-                                'mesas y usuarios.',
+                            ? 'Tus datos se guardan en la nube: entra con la misma cuenta en '
+                                'cualquier tablet o celular y verás el mismo negocio.'
+                            : 'Tus datos se guardan en la nube. Si ya tienes un negocio, inicia '
+                                'sesión y aparecerá con su menú, mesas, usuarios y pedidos.',
                       ),
                     ],
                   ),

@@ -17,3 +17,4 @@ export 'teclado_codigo.dart';
 export 'aviso.dart';
 export 'boton_google.dart';
 export 'avatar_usuario.dart';
+export 'estado_nube.dart';

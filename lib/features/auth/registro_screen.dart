@@ -3,6 +3,8 @@ import 'package:rim_coffee/app/route_args.dart';
 import 'package:rim_coffee/app/route_names.dart';
 import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/constants/app_assets.dart';
+import 'package:rim_coffee/core/nube/acceso.dart';
+import 'package:rim_coffee/core/nube/nube.dart';
 import 'package:rim_coffee/core/services/google_auth.dart';
 import 'package:rim_coffee/core/state/app_bootstrap.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
@@ -19,7 +21,8 @@ import 'package:rim_coffee/features/shared/usuario_form_sheet.dart';
 class RegistroScreen extends StatefulWidget {
   const RegistroScreen({super.key, this.google});
 
-  /// Si se llegó desde "Continuar con Google", trae el correo elegido.
+  /// Si la persona ya entró a su cuenta en la nube (desde el login), trae
+  /// su correo y no se vuelve a pedir contraseña.
   final RegistroArgs? google;
 
   @override
@@ -44,7 +47,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
   bool _acepto = false;
   bool _terminosPendiente = false;
   bool _cargandoGoogle = false;
+  bool _registrando = false;
   String? _errorGeneral;
+
+  /// Ya entró a la cuenta en la nube (no hace falta crearla).
+  bool _autenticado = false;
 
   bool get _conGoogle => _correoGoogle.isNotEmpty;
 
@@ -53,8 +60,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
     super.initState();
     final g = widget.google;
     if (g != null) {
+      _autenticado = true;
       _correoGoogle = g.correoGoogle;
-      _correo.text = g.correoGoogle;
+      _correo.text = g.correo;
       _beneficiario.text = g.nombre;
     }
   }
@@ -82,20 +90,44 @@ class _RegistroScreenState extends State<RegistroScreen> {
       _errorGeneral = null;
     });
     final r = await GoogleAuth.elegirCuenta();
+    final cuenta = r.cuenta;
+    String? error = r.error;
+    if (error == null && cuenta != null) {
+      error = await Nube.entrarConGoogle(idToken: cuenta.idToken, accessToken: cuenta.accessToken);
+    }
     if (!mounted) {
+      return;
+    }
+    if (error != null || cuenta == null) {
+      setState(() {
+        _cargandoGoogle = false;
+        _errorGeneral = error;
+      });
+      return;
+    }
+    // Si esa cuenta ya tenía un negocio en la nube, se carga y listo.
+    final acceso = await AccesoNube.despuesDeEntrar();
+    if (!mounted) {
+      return;
+    }
+    if (acceso.tipo == TipoAcceso.entro) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Esta cuenta ya tenía un negocio: se cargaron sus datos.')),
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil(Routes.home, (ruta) => false);
       return;
     }
     setState(() {
       _cargandoGoogle = false;
-      final cuenta = r.cuenta;
-      if (r.error != null) {
-        _errorGeneral = r.error;
-      } else if (cuenta != null) {
-        _correoGoogle = cuenta.correo;
-        _correo.text = cuenta.correo;
-        if (_beneficiario.text.trim().isEmpty) {
-          _beneficiario.text = cuenta.nombre;
-        }
+      if (acceso.tipo == TipoAcceso.error) {
+        _errorGeneral = acceso.error;
+        return;
+      }
+      _autenticado = true;
+      _correoGoogle = cuenta.correo;
+      _correo.text = cuenta.correo;
+      if (_beneficiario.text.trim().isEmpty) {
+        _beneficiario.text = cuenta.nombre;
       }
     });
   }
@@ -107,7 +139,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     }
   }
 
-  void _registrar() {
+  Future<void> _registrar() async {
     setState(() {
       _errorGeneral = null;
       _terminosPendiente = !_acepto;
@@ -117,34 +149,52 @@ class _RegistroScreenState extends State<RegistroScreen> {
       setState(() => _errorGeneral ??= 'Revisa los campos marcados en rojo.');
       return;
     }
-    final error = NegocioController.instance.registrar(
+    setState(() => _registrando = true);
+    if (!_autenticado) {
+      final error = await Nube.registrar(_correo.text, _clave.text);
+      if (!mounted) {
+        return;
+      }
+      if (error != null) {
+        setState(() {
+          _registrando = false;
+          _errorGeneral = error;
+        });
+        return;
+      }
+      _autenticado = true;
+    }
+    NegocioController.instance.registrar(
       nombre: _nombre.text,
       correo: _correo.text,
-      contrasena: _clave.text,
       correoGoogle: _correoGoogle,
       eslogan: _eslogan.text,
       logo: _logo,
     );
-    if (error != null) {
-      setState(() => _errorGeneral = error);
-      return;
-    }
     AppBootstrap.prepararNegocioNuevo(
       beneficiario: _beneficiario.text,
       codigo: _codigo.text.trim(),
       mesas: _mesas,
       menuDeEjemplo: _menuEjemplo,
     );
+    final errorNube = await AccesoNube.publicarNegocioNuevo();
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('¡${_nombre.text.trim()} está listo! Bienvenido.')),
+      SnackBar(
+        content: Text(
+          errorNube == null
+              ? '¡${_nombre.text.trim()} está listo y guardado en la nube!'
+              : '${_nombre.text.trim()} está listo. Se subirá a la nube cuando haya conexión.',
+        ),
+      ),
     );
     Navigator.of(context).pushNamedAndRemoveUntil(Routes.home, (ruta) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final yaExiste = NegocioController.instance.existeCuenta;
-
     return Scaffold(
       appBar: rcAppBar(title: 'Crear mi negocio', showBack: true),
       body: SafeArea(
@@ -159,17 +209,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Configura tu cafetería en cuatro pasos. Todo se puede cambiar después '
-                      'desde el Panel del beneficiario.',
+                      'Configura tu cafetería en cuatro pasos. Se guarda en la nube: entra con '
+                      'la misma cuenta en cualquier dispositivo. Todo se puede cambiar después.',
                       style: AppText.caption,
                     ),
-                    if (yaExiste) ...[
-                      const SizedBox(height: 12),
-                      const AvisoInfo(
-                        'Este dispositivo ya tiene un negocio. Para crear otro hay que '
-                        'borrar los datos (Panel → Seguridad).',
-                      ),
-                    ],
                     const SizedBox(height: 18),
                     // ------------------------------------------------ 1. Negocio
                     _Paso(
@@ -257,7 +300,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                       numero: 2,
                       titulo: 'Acceso a la cuenta',
                       children: [
-                        if (_conGoogle)
+                        if (_autenticado)
                           SoftCard(
                             shadow: false,
                             color: AppColors.crema,
@@ -270,18 +313,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Cuenta de Google', style: AppText.title),
-                                      Text(_correoGoogle, style: AppText.caption),
+                                      Text(
+                                        _conGoogle ? 'Cuenta de Google' : 'Cuenta en la nube',
+                                        style: AppText.title,
+                                      ),
+                                      Text(_correo.text, style: AppText.caption),
                                     ],
                                   ),
                                 ),
-                                TextButton(
-                                  onPressed: () => setState(() {
-                                    _correoGoogle = '';
-                                    _correo.clear();
-                                  }),
-                                  child: const Text('Quitar'),
-                                ),
+
                               ],
                             ),
                           )
@@ -293,15 +333,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'Opcional: así podrás entrar sin escribir la contraseña.',
+                            'O crea la cuenta con correo y contraseña:',
                             style: AppText.caption,
                           ),
                         ],
+                        if (!_autenticado) ...[
                         const SizedBox(height: 14),
                         RcTextField(
                           label: 'CORREO DEL NEGOCIO',
                           controller: _correo,
-                          enabled: !_conGoogle,
                           hint: 'nombre@correo.com',
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
@@ -314,16 +354,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         ),
                         const SizedBox(height: 14),
                         RcPasswordField(
-                          label: _conGoogle ? 'CONTRASEÑA (OPCIONAL)' : 'CONTRASEÑA',
+                          label: 'CONTRASEÑA',
                           controller: _clave,
                           hint: 'Mínimo 6, con letras y números',
                           textInputAction: TextInputAction.next,
-                          validator: (v) {
-                            if (_conGoogle && (v ?? '').isEmpty) {
-                              return null;
-                            }
-                            return Validadores.contrasena(v);
-                          },
+                          validator: Validadores.contrasena,
                         ),
                         const SizedBox(height: 14),
                         RcPasswordField(
@@ -332,9 +367,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           hint: 'Repite tu contraseña',
                           textInputAction: TextInputAction.next,
                           validator: (v) {
-                            if (_conGoogle && _clave.text.isEmpty && (v ?? '').isEmpty) {
-                              return null;
-                            }
                             if (v == null || v.isEmpty) {
                               return 'Confirma tu contraseña';
                             }
@@ -344,6 +376,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             return null;
                           },
                         ),
+                        ],
                       ],
                     ),
                     // ------------------------------------------------ 3. Beneficiario
@@ -475,7 +508,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     RcButton(
                       label: 'Crear mi negocio',
                       icon: Icons.check_circle_outline,
-                      onPressed: yaExiste ? null : _registrar,
+                      cargando: _registrando,
+                      onPressed: _registrar,
                     ),
                     const SizedBox(height: 8),
                     TextButton(

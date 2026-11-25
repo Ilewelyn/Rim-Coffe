@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:rim_coffee/core/nube/sincronizacion.dart';
 import 'package:rim_coffee/core/state/carrito_controller.dart';
 import 'package:rim_coffee/core/state/config_controller.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
@@ -6,6 +9,7 @@ import 'package:rim_coffee/core/state/productos_controller.dart';
 import 'package:rim_coffee/core/state/sesion_cliente.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
 import 'package:rim_coffee/core/storage/app_storage.dart';
+import 'package:rim_coffee/core/storage/esquema.dart';
 
 /// Arranque de la app: carga los datos guardados en el dispositivo.
 class AppBootstrap {
@@ -23,6 +27,56 @@ class AppBootstrap {
     PedidosController.instance.cargar();
     CarritoController.instance.cargar();
     SesionCliente.instance.cargar();
+  }
+
+  /// Conecta la base local con la nube: cada cambio local se sube y los
+  /// cambios de otros dispositivos recargan las pantallas.
+  static void conectarNube() {
+    final sync = Sincronizacion.instance;
+    AppStorage.alEscribir = sync.alEscribirLocal;
+    sync.alCambiarDesdeNube = recargarClaves;
+    if (NegocioController.instance.estaAutenticado) {
+      unawaited(sync.iniciar());
+    }
+  }
+
+  /// Vuelve a leer todo y avisa a las pantallas.
+  static void recargarTodo() {
+    ConfigController.instance.recargar();
+    final negocio = NegocioController.instance;
+    final sesion = negocio.sesionIniciada;
+    negocio.recargar();
+    negocio.sesionIniciada = sesion;
+    UsuariosController.instance.recargar();
+    ProductosController.instance.recargar();
+    PedidosController.instance.recargar();
+  }
+
+  /// Recarga solo lo que cambió desde otro dispositivo.
+  static void recargarClaves(Set<String> claves) {
+    for (final clave in claves) {
+      switch (clave) {
+        case Esquema.kConfig:
+          ConfigController.instance.recargar();
+          break;
+        case Esquema.kNegocio:
+          final negocio = NegocioController.instance;
+          final sesion = negocio.sesionIniciada;
+          negocio.recargar();
+          negocio.sesionIniciada = sesion;
+          break;
+        case Esquema.kUsuarios:
+          UsuariosController.instance.recargar();
+          break;
+        case Esquema.kProductos:
+          ProductosController.instance.recargar();
+          break;
+        case Esquema.kCuentas:
+        case Esquema.kPedidos:
+          PedidosController.instance.recargar();
+          break;
+      }
+    }
   }
 
   /// Prepara un negocio recién registrado: mesas, menú de ejemplo o vacío,

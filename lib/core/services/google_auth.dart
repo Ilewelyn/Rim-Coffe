@@ -1,13 +1,23 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:rim_coffee/core/nube/nube_config.dart';
 
 /// Cuenta de Google elegida por el usuario.
 class CuentaGoogle {
-  const CuentaGoogle({required this.correo, required this.nombre});
+  const CuentaGoogle({
+    required this.correo,
+    required this.nombre,
+    required this.idToken,
+    required this.accessToken,
+  });
 
   final String correo;
   final String nombre;
+
+  /// Credenciales para entrar a la nube (Supabase) con esta cuenta.
+  final String idToken;
+  final String accessToken;
 }
 
 /// Resultado de "Continuar con Google": la cuenta elegida, un mensaje de
@@ -29,15 +39,20 @@ class ResultadoGoogle {
 class GoogleAuth {
   GoogleAuth._();
 
-  /// En la versión web no se ofrece (necesita otra configuración).
-  static bool get disponible => !kIsWeb;
+  /// Solo en Android y cuando ya está el ID de cliente web de Google
+  /// (ver NubeConfig y GOOGLE_LOGIN.md).
+  static bool get disponible => !kIsWeb && NubeConfig.googleWebClientId.isNotEmpty;
 
-  static final GoogleSignIn _google = GoogleSignIn(scopes: const ['email']);
+  static final GoogleSignIn _google = GoogleSignIn(
+    scopes: const ['email'],
+    serverClientId:
+        NubeConfig.googleWebClientId.isEmpty ? null : NubeConfig.googleWebClientId,
+  );
 
   static Future<ResultadoGoogle> elegirCuenta() async {
     if (!disponible) {
       return const ResultadoGoogle(
-        error: 'El inicio con Google solo está disponible en la app de Android.',
+        error: 'El inicio con Google todavía no está activado en esta versión.',
       );
     }
     try {
@@ -51,10 +66,20 @@ class GoogleAuth {
       if (cuenta == null) {
         return const ResultadoGoogle();
       }
+      final credenciales = await cuenta.authentication;
+      final idToken = credenciales.idToken;
+      final accessToken = credenciales.accessToken;
+      if (idToken == null || accessToken == null) {
+        return const ResultadoGoogle(
+          error: 'Google no entregó las credenciales. Revisa el ID de cliente web (GOOGLE_LOGIN.md).',
+        );
+      }
       return ResultadoGoogle(
         cuenta: CuentaGoogle(
           correo: cuenta.email.trim().toLowerCase(),
           nombre: cuenta.displayName ?? '',
+          idToken: idToken,
+          accessToken: accessToken,
         ),
       );
     } on PlatformException catch (e) {

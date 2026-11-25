@@ -27,9 +27,7 @@ call flutter pub get
 echo.
 echo [4/4] Generando el icono y el nombre de la app...
 call dart run flutter_launcher_icons
-if exist android\build.gradle.kts (set GRADLE_RAIZ=android\build.gradle.kts) else (set GRADLE_RAIZ=android\build.gradle)
-copy /b %GRADLE_RAIZ% + tool\desactivar_lint.gradle.txt %GRADLE_RAIZ% >nul
-powershell -Command "(Get-Content android\app\src\main\AndroidManifest.xml) -replace 'android:label=\"rim_coffee\"','android:label=\"Rim Coffee\"' | Set-Content android\app\src\main\AndroidManifest.xml"
+powershell -ExecutionPolicy Bypass -File tool\preparar_android.ps1
 
 echo.
 echo ==============================================

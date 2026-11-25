@@ -21,6 +21,13 @@ class ProductosController extends ChangeNotifier {
 
   List<Producto> get todos => List.unmodifiable(_items);
 
+  /// Vuelve a leer lo guardado (por ejemplo, cuando llegan cambios de
+  /// otro dispositivo) y avisa a las pantallas.
+  void recargar() {
+    cargar();
+    notifyListeners();
+  }
+
   void cargar() {
     final raw = AppStorage.leer(_clave);
     if (raw == null) {

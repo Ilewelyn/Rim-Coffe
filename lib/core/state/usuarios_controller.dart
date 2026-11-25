@@ -85,6 +85,13 @@ class UsuariosController extends ChangeNotifier {
   /// Carga los usuarios. Si vienen de la versión anterior (dos PIN
   /// compartidos), crea un beneficiario con el PIN del dueño y un
   /// administrador "Mostrador" con el del personal.
+  /// Vuelve a leer lo guardado (por ejemplo, cuando llegan cambios de
+  /// otro dispositivo) y avisa a las pantallas.
+  void recargar() {
+    cargar();
+    notifyListeners();
+  }
+
   void cargar({Negocio? anterior}) {
     _fallos = 0;
     _bloqueadoHasta = null;

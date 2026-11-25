@@ -91,8 +91,8 @@ void main() {
     UsuariosController.instance.cargar(anterior: negocio.negocio);
     negocio.guardarSiMigro();
 
-    expect(negocio.iniciarSesion('cafe@correo.com', 'rimcoffe_67'), isTrue);
-    expect(negocio.iniciarSesion('cafe@correo.com', 'otra'), isFalse);
+    expect(negocio.contrasenaLocalCorrecta('cafe@correo.com', 'rimcoffe_67'), isTrue);
+    expect(negocio.contrasenaLocalCorrecta('cafe@correo.com', 'otra'), isFalse);
     expect(AppStorage.leer('rc.v2.negocio'), isNot(contains('rimcoffe_67')));
     final dueno = UsuariosController.instance.verificar('2468').usuario;
     expect(dueno?.esBeneficiario, isTrue);
@@ -100,16 +100,15 @@ void main() {
     expect(mostrador?.rol, Rol.administrador);
   });
 
-  test('registro con Google sin contraseña', () {
+  test('el negocio local no guarda la contraseña (la tiene la nube)', () {
     final negocio = NegocioController.instance;
-    expect(
-      negocio.registrar(nombre: 'Café Luna', correo: 'luna@gmail.com', correoGoogle: 'luna@gmail.com'),
-      isNull,
-    );
-    expect(negocio.tieneContrasena, isFalse);
-    negocio.cerrarSesion();
-    expect(negocio.iniciarConGoogle('LUNA@gmail.com'), isTrue);
-    expect(negocio.iniciarConGoogle('otra@gmail.com'), isFalse);
+    negocio.registrar(nombre: 'Café Luna', correo: 'Luna@gmail.com', correoGoogle: 'luna@gmail.com');
+    expect(negocio.correo, 'luna@gmail.com');
+    expect(negocio.negocio!.contrasenaHuella, isEmpty);
+    expect(negocio.correoRegistrado('LUNA@gmail.com'), isTrue);
+    expect(negocio.correoRegistrado('otra@gmail.com'), isFalse);
+    // Sin sesión en la nube no se considera autenticado.
+    expect(negocio.estaAutenticado, isFalse);
   });
 
   test('fecha larga en español', () {
