@@ -58,23 +58,41 @@ class GoogleAuth {
         ),
       );
     } on PlatformException catch (e) {
+      if (_esCancelacion(e.code, e.message ?? '')) {
+        return const ResultadoGoogle();
+      }
       return ResultadoGoogle(error: _mensaje('${e.code} ${e.message ?? ''}'));
     } catch (e) {
       return ResultadoGoogle(error: _mensaje(e.toString()));
     }
   }
 
+  /// Código de estado de Google dentro del texto del error
+  /// (por ejemplo "ApiException: 10: " o solo "10: ").
+  static int? _codigo(String detalle) {
+    final m = RegExp(r'(?:^|[^\d])(\d{1,5})\s*:').firstMatch(detalle);
+    return m == null ? null : int.tryParse(m.group(1)!);
+  }
+
+  static bool _esCancelacion(String codigo, String mensaje) {
+    return codigo == 'sign_in_canceled' || _codigo(mensaje) == 12501;
+  }
+
   static String _mensaje(String detalle) {
-    final sinConfigurar = RegExp(r'ApiException:\s*(10|12500)\b').hasMatch(detalle) ||
-        detalle.contains('DEVELOPER_ERROR');
+    final codigo = _codigo(detalle);
+    final sinConfigurar = codigo == 10 ||
+        codigo == 12500 ||
+        detalle.contains('DEVELOPER_ERROR') ||
+        (detalle.contains('sign_in_failed') && codigo == null);
     if (sinConfigurar) {
-      return 'El inicio con Google todavía no está configurado para esta app. '
-          'Usa tu correo y contraseña (el responsable puede activarlo con la '
-          'guía GOOGLE_LOGIN.md).';
+      return 'El inicio con Google todavía no está configurado para esta app '
+          '(código ${codigo ?? '?'}). Mientras tanto usa tu correo y contraseña; '
+          'para activarlo sigue la guía GOOGLE_LOGIN.md.';
     }
-    if (detalle.contains('network_error') || detalle.contains('ApiException: 7')) {
+    if (codigo == 7 || detalle.contains('network_error')) {
       return 'Sin conexión a internet. Revisa la red e inténtalo de nuevo.';
     }
-    return 'No se pudo iniciar con Google. Inténtalo de nuevo o usa tu correo.';
+    return 'No se pudo iniciar con Google (código ${codigo ?? detalle.split(' ').first}). '
+        'Inténtalo de nuevo o usa tu correo.';
   }
 }
