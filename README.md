@@ -121,6 +121,9 @@ Guardadas en `screenshots/`:
 La cuenta del negocio (correo y contraseña, o Google) es de Supabase Auth. La función `recuperar-contrasena` (Edge Function)
 cambia la contraseña si se escribe bien el código de un beneficiario (máximo 5 intentos por hora).
 
+**Puente** (`tool/puente/worker.js`): la app no habla directo con `supabase.co` sino con un Cloudflare Worker
+(`https://rim-coffee-api.inthecloud275.workers.dev`) que reenvía todo a Supabase. Así funciona aunque una red Wi-Fi bloquee supabase.co.
+
 **Sincronización** (`lib/core/nube/sincronizacion.dart`): cada cambio local se sube en segundo plano (solo las filas que cambiaron);
 los cambios de otros dispositivos llegan al momento por *Realtime* y además se revisa la nube cada 30 s y al volver a la app.
 El turno, la sesión, el modo Cliente y el carrito son de cada dispositivo y no se comparten.
