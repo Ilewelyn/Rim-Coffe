@@ -3,7 +3,8 @@
 Proyecto en parejas de **Desarrollo de Aplicaciones Móviles** (UTNG), hecho con Flutter y Material 3.
 Primer cliente: **Rimbaud's Coffee**. La app sirve para **cualquier cafetería**: cada negocio pone su nombre, logo, menú, mesas y usuarios.
 
-> Los datos se guardan en una **base de datos SQLite** dentro del dispositivo (`rim_coffee.db`), así que la app funciona sin internet.
+> Los datos se guardan en una **base de datos en la nube (Supabase / PostgreSQL)**: entras con la misma cuenta en cualquier tablet o celular y ves el mismo negocio.
+> Cada dispositivo guarda además una copia en **SQLite** (`rim_coffee.db`), así que sigue funcionando sin internet y sube los cambios al volver la conexión.
 > Las contraseñas y los códigos se guardan cifrados (SHA-256 con sal).
 
 ---
@@ -113,9 +114,18 @@ Guardadas en `screenshots/`:
 ![11](screenshots/11-foto-equipo.png)
 ![12](screenshots/12-navegacion.png)
 
-## 5. Base de datos (SQLite)
+## 5. Base de datos
 
-Archivo `rim_coffee.db` en el dispositivo, paquete `sqflite`. El esquema está en `lib/core/storage/esquema.dart`.
+**En la nube: Supabase (PostgreSQL)**, proyecto `rim-coffee`. Las mismas tablas de abajo, cada fila con `negocio_id`
+(el usuario de Supabase Auth dueño de la cuenta del negocio). Reglas **RLS**: cada negocio solo puede leer y cambiar sus filas.
+La cuenta del negocio (correo y contraseña, o Google) es de Supabase Auth. La función `recuperar-contrasena` (Edge Function)
+cambia la contraseña si se escribe bien el código de un beneficiario (máximo 5 intentos por hora).
+
+**Sincronización** (`lib/core/nube/sincronizacion.dart`): cada cambio local se sube en segundo plano (solo las filas que cambiaron);
+los cambios de otros dispositivos llegan al momento por *Realtime* y además se revisa la nube cada 30 s y al volver a la app.
+El turno, la sesión, el modo Cliente y el carrito son de cada dispositivo y no se comparten.
+
+**En el dispositivo: SQLite** (`rim_coffee.db`, paquete `sqflite`), copia local para trabajar sin internet. El esquema está en `lib/core/storage/esquema.dart`.
 
 | Tabla | Llave | Contenido |
 |---|---|---|
@@ -156,7 +166,7 @@ El patrón Observer es `ChangeNotifier` + `ListenableBuilder`. Pruebas en `test/
 
 ## 7. Limitaciones
 
-- Sin servidor: la base de datos vive en el dispositivo. Hay respaldo manual (*Panel → Seguridad → Exportar/Importar*).
-- Un negocio por dispositivo. Para usar otra tablet, exporta el respaldo e impórtalo allá.
-- Google se usa solo para identificar al dueño de la cuenta. No sincroniza datos entre dispositivos.
+- Si dos dispositivos cambian el mismo registro al mismo tiempo, gana el último en guardarse.
+- Las fotos elegidas de la galería (productos y logo) se guardan en el dispositivo donde se eligieron; en otros dispositivos se ve la imagen por defecto.
+- El plan gratis de Supabase pausa el proyecto tras una semana sin uso; se reactiva desde supabase.com.
 - La llave de firma `tool/firma/debug.keystore` es para pruebas. Para Play Store hace falta una llave de publicación propia.
