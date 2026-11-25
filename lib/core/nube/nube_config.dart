@@ -12,5 +12,6 @@ class NubeConfig {
 
   /// ID de cliente de Google tipo "Aplicación web" (Google Cloud). Hace
   /// falta para entrar con Google a la nube. Vacío = Google desactivado.
-  static const String googleWebClientId = '';
+  static const String googleWebClientId =
+      '1097443644220-7oc5ibnfc4ngue22k7b31a2ipohdpuk1.apps.googleusercontent.com';
 }
