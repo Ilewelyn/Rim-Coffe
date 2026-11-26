@@ -234,6 +234,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                                     ),
                                     child: AppImage(
                                       _logo.isEmpty ? AppAssets.logo : _logo,
+                                      fit: _logo.isEmpty ? BoxFit.contain : BoxFit.cover,
                                       width: 76,
                                       height: 76,
                                       radius: 38,

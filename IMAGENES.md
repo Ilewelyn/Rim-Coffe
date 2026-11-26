@@ -7,7 +7,8 @@ Ruta base: `assets/images/`
 
 | Archivo | Dónde aparece | Tamaño recomendado |
 |---|---|---|
-| `logo/logo.png` | Logo por defecto e ícono de la app (cuadrado). Cada negocio puede poner el suyo desde la app: *Panel → Negocio → Logo* | 768 x 768 px |
+| `logo/logo.png` | Logo de **Rim Coffee** (la plataforma): ícono de la app, splash e inicio de sesión. Cada negocio pone el suyo en *Panel → Negocio → Logo* (se guarda en la nube) | 512 x 512 px o más |
+| `logo/icono_frente.png` | Primer plano del ícono adaptable de Android (logo centrado sobre fondo transparente) | 432 x 432 px |
 | `branding/splash.jpg` | Pantalla de inicio (splash): fondo | 1080 x 1920 px |
 | `branding/bienvenida.jpg` | Bienvenida del cliente (tablet): fondo a pantalla completa | 1080 x 1920 px |
 | `branding/hero_menu.jpg` | Menú del cliente: banner superior | 1200 x 600 px |

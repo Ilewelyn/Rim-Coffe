@@ -4,7 +4,7 @@ import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/widgets/app_image.dart';
 
 /// Logo del negocio dentro de un círculo blanco. Usa la foto que eligió el
-/// beneficiario (Panel → Negocio) o, si no hay, el logo por defecto.
+/// beneficiario (Panel → Negocio) o, si no hay, el logo de Rim Coffee.
 class LogoNegocio extends StatelessWidget {
   const LogoNegocio({super.key, this.tamano = 54, this.borde = 4, this.sombra = false});
 
@@ -18,7 +18,8 @@ class LogoNegocio extends StatelessWidget {
     return ListenableBuilder(
       listenable: negocio,
       builder: (context, _) {
-        final ruta = negocio.logo.isEmpty ? AppAssets.logo : negocio.logo;
+        final propio = negocio.logo.isNotEmpty;
+        final ruta = propio ? negocio.logo : AppAssets.logo;
         return Container(
           padding: EdgeInsets.all(borde),
           decoration: BoxDecoration(
@@ -30,7 +31,17 @@ class LogoNegocio extends StatelessWidget {
                   ]
                 : null,
           ),
-          child: AppImage(ruta, width: tamano, height: tamano, radius: tamano / 2),
+          child: propio
+              ? AppImage(ruta, width: tamano, height: tamano, radius: tamano / 2)
+              : Padding(
+                  padding: EdgeInsets.all(tamano * 0.08),
+                  child: AppImage(
+                    ruta,
+                    width: tamano * 0.84,
+                    height: tamano * 0.84,
+                    fit: BoxFit.contain,
+                  ),
+                ),
         );
       },
     );

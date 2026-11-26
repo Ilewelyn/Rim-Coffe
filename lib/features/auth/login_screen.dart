@@ -149,36 +149,55 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const AppImage(AppAssets.login, fit: BoxFit.cover),
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0x6624160F), Color(0xF224160F)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [MarcaColors.marino, MarcaColors.azulado],
                     ),
                   ),
                 ),
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const LogoNegocio(tamano: 58, borde: 3),
-                        const SizedBox(height: 16),
-                        Text(
-                          existeCuenta ? negocio.nombre : NegocioController.nombreApp,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.display.copyWith(color: Colors.white),
+                        Container(
+                          width: 64,
+                          height: 64,
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const AppImage(AppAssets.logo, fit: BoxFit.contain),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          existeCuenta
-                              ? negocio.eslogan
-                              : 'El mostrador digital para tu cafetería.',
-                          style: const TextStyle(fontSize: 14, color: AppColors.latte),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                NegocioController.nombreApp,
+                                style: TextStyle(
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                existeCuenta
+                                    ? 'Tu negocio: ${negocio.nombre}'
+                                    : 'El mostrador digital para tu negocio',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14, color: MarcaColors.claro),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),

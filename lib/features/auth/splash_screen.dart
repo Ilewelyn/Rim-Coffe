@@ -54,22 +54,20 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final negocio = NegocioController.instance;
     return Scaffold(
-      backgroundColor: AppColors.espresso,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const AppImage(AppAssets.splash, fit: BoxFit.cover),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xB32B1810), Color(0xF22B1810)],
-              ),
-            ),
+      backgroundColor: MarcaColors.marino,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [MarcaColors.marino, MarcaColors.azulado],
           ),
-          SafeArea(
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
             child: Column(
               children: [
                 const Spacer(flex: 3),
@@ -77,43 +75,82 @@ class _SplashScreenState extends State<SplashScreen>
                   opacity: _opacidad,
                   child: ScaleTransition(
                     scale: _escala,
-                    child: const LogoNegocio(tamano: 128, borde: 8, sombra: true),
+                    child: Container(
+                      width: 150,
+                      height: 150,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(38),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x55000000),
+                            blurRadius: 30,
+                            offset: Offset(0, 14),
+                          ),
+                        ],
+                      ),
+                      child: const AppImage(AppAssets.logo, fit: BoxFit.contain),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 28),
                 FadeTransition(
                   opacity: _opacidad,
-                  child: Text(
-                    NegocioController.instance.nombre,
+                  child: const Text(
+                    NegocioController.nombreApp,
                     textAlign: TextAlign.center,
-                    style: AppText.display.copyWith(color: Colors.white, fontSize: 40),
+                    style: TextStyle(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 FadeTransition(
                   opacity: _opacidad,
-                  child: Text(
-                    NegocioController.instance.existeCuenta
-                        ? NegocioController.instance.eslogan
-                        : 'Tu cafetería, en una tablet.',
+                  child: const Text(
+                    'El mostrador digital para tu negocio',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 15, color: AppColors.latte),
+                    style: TextStyle(fontSize: 15, color: MarcaColors.claro),
                   ),
                 ),
+                if (negocio.existeCuenta) ...[
+                  const SizedBox(height: 18),
+                  FadeTransition(
+                    opacity: _opacidad,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0x26FFFFFF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        negocio.nombre,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const Spacer(flex: 3),
                 const SizedBox(
                   width: 26,
                   height: 26,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.6,
-                    color: AppColors.caramel,
+                    color: MarcaColors.naranja,
                   ),
                 ),
                 const SizedBox(height: 42),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

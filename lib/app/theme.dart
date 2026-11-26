@@ -17,6 +17,18 @@ class AppColors {
   static const Color danger = Color(0xFFB3402F);
 }
 
+/// Colores de la marca Rim Coffee (la plataforma, no la cafetería):
+/// azul marino, verde azulado y naranja del logo. Se usan en el splash y
+/// en el inicio de sesión; dentro de cada negocio manda la paleta café.
+class MarcaColors {
+  MarcaColors._();
+
+  static const Color marino = Color(0xFF173650);
+  static const Color azulado = Color(0xFF237F86);
+  static const Color naranja = Color(0xFFE8913F);
+  static const Color claro = Color(0xFFD8ECEA);
+}
+
 class AppShadows {
   AppShadows._();
 
