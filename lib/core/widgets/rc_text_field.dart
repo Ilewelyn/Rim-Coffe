@@ -42,7 +42,7 @@ class RcTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppText.label),
+        Text(label, style: AppText.label.copyWith(color: RcColores.of(context).secundario)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -58,6 +58,7 @@ class RcTextField extends StatelessWidget {
           autovalidateMode: AutovalidateMode.onUserInteraction,
           style: AppText.body,
           decoration: rcInput(
+            foco: RcColores.of(context).acento,
             hint: hint,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,

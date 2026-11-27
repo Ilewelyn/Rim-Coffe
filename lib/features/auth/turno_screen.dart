@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rim_coffee/app/route_names.dart';
 import 'package:rim_coffee/app/theme.dart';
-import 'package:rim_coffee/core/constants/app_assets.dart';
 import 'package:rim_coffee/core/models/usuario.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
@@ -177,13 +176,12 @@ class _TurnoScreenState extends State<TurnoScreen> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            const AppImage(AppAssets.splash, fit: BoxFit.cover),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xCC1E120C), Color(0xF51E120C)],
+                  colors: [Color(0xFF3A2519), AppColors.espresso],
                 ),
               ),
             ),

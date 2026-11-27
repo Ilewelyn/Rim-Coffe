@@ -230,7 +230,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: AppColors.latte),
+                                      border: Border.all(color: RcColores.of(context).borde),
                                     ),
                                     child: AppImage(
                                       _logo.isEmpty ? AppAssets.logo : _logo,
@@ -245,8 +245,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
                                     bottom: 0,
                                     child: Container(
                                       padding: const EdgeInsets.all(6),
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.caramel,
+                                      decoration: BoxDecoration(
+                                        color: RcColores.of(context).acento,
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -304,7 +304,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         if (_autenticado)
                           SoftCard(
                             shadow: false,
-                            color: AppColors.crema,
+                            color: RcColores.of(context).suave,
                             padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
                             child: Row(
                               children: [
@@ -431,7 +431,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.table_restaurant_outlined, color: AppColors.cafe),
+                            Icon(Icons.table_restaurant_outlined, color: RcColores.of(context).secundario),
                             const SizedBox(width: 10),
                             const Expanded(
                               child: Text('Número de mesas', style: AppText.title),
@@ -475,7 +475,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         children: [
                           Checkbox(
                             value: _acepto,
-                            activeColor: AppColors.cafe,
                             onChanged: (v) => setState(() {
                               _acepto = v ?? false;
                               if (_acepto) {
@@ -552,8 +551,8 @@ class _Paso extends StatelessWidget {
                   width: 30,
                   height: 30,
                   alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.espresso,
+                  decoration: BoxDecoration(
+                    color: RcColores.of(context).primario,
                     shape: BoxShape.circle,
                   ),
                   child: Text(
@@ -603,16 +602,16 @@ class _Opcion extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: elegida ? AppColors.crema : Colors.white,
+          color: elegida ? RcColores.of(context).suave : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: elegida ? AppColors.caramel : AppColors.line,
+            color: elegida ? RcColores.of(context).acento : RcColores.of(context).borde,
             width: elegida ? 1.8 : 1.2,
           ),
         ),
         child: Row(
           children: [
-            Icon(icono, color: elegida ? AppColors.cafe : AppColors.muted),
+            Icon(icono, color: elegida ? RcColores.of(context).secundario : AppColors.muted),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -625,7 +624,7 @@ class _Opcion extends StatelessWidget {
             ),
             Icon(
               elegida ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: elegida ? AppColors.caramel : AppColors.latte,
+              color: elegida ? RcColores.of(context).acento : RcColores.of(context).borde,
             ),
           ],
         ),

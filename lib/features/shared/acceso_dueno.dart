@@ -6,15 +6,10 @@ import 'package:rim_coffee/core/state/usuarios_controller.dart';
 import 'package:rim_coffee/core/widgets/widgets.dart';
 
 /// Abre el Panel del beneficiario (reportes, usuarios, negocio y seguridad).
-/// Si quien tiene el turno ya es beneficiario entra directo; si no, se pide
-/// el código de un beneficiario.
+/// Siempre pide el código de un beneficiario, aunque el turno sea suyo, para
+/// que nadie entre al panel con la tablet desbloqueada.
 Future<void> abrirPanelDueno(BuildContext context) async {
   final navegador = Navigator.of(context);
-  final actual = UsuariosController.instance.actual;
-  if (actual != null && actual.esBeneficiario) {
-    navegador.pushNamed(Routes.dueno);
-    return;
-  }
   final ok = await pedirPin(
     context,
     titulo: 'Panel del beneficiario',

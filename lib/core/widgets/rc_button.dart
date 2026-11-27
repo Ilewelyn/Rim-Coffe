@@ -26,15 +26,16 @@ class RcButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = RcColores.of(context);
     final forma = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
     const texto = TextStyle(fontFamily: AppFonts.sans, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2);
 
     final onPressed = cargando ? null : this.onPressed;
     final Widget contenido = cargando
-        ? const SizedBox(
+        ? SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.cafe),
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: c.secundario),
           )
         : icon == null
         ? Text(label, textAlign: TextAlign.center)
@@ -53,8 +54,8 @@ class RcButton extends StatelessWidget {
         boton = OutlinedButton(
           onPressed: onPressed,
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.cafe,
-            side: const BorderSide(color: AppColors.cafe, width: 1.6),
+            foregroundColor: c.secundario,
+            side: BorderSide(color: c.secundario, width: 1.6),
             shape: forma,
             textStyle: texto,
           ),
@@ -65,8 +66,8 @@ class RcButton extends StatelessWidget {
         boton = FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.crema,
-            foregroundColor: AppColors.cafe,
+            backgroundColor: c.suave,
+            foregroundColor: c.secundario,
             disabledBackgroundColor: AppColors.line,
             disabledForegroundColor: AppColors.muted,
             shape: forma,
@@ -91,7 +92,7 @@ class RcButton extends StatelessWidget {
         boton = FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.caramel,
+            backgroundColor: c.acento,
             foregroundColor: Colors.white,
             disabledBackgroundColor: AppColors.line,
             disabledForegroundColor: AppColors.muted,
@@ -105,7 +106,7 @@ class RcButton extends StatelessWidget {
         boton = FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.espresso,
+            backgroundColor: c.primario,
             foregroundColor: Colors.white,
             disabledBackgroundColor: AppColors.line,
             disabledForegroundColor: AppColors.muted,

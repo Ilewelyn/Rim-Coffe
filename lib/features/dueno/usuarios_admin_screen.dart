@@ -158,8 +158,9 @@ class UsuariosAdminScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
             children: [
               const AvisoInfo(
-                'Cada persona entra con su propio código. El beneficiario ve todo; '
-                'a los administradores les eliges qué pueden hacer además de atender.',
+                'Cada persona entra con su propio código. Con el ojo ves el código de un '
+                'administrador y con el candado lo cambias. A los administradores les '
+                'eliges qué pueden hacer además de atender.',
                 icono: Icons.verified_user_outlined,
               ),
               const SizedBox(height: 18),
@@ -203,7 +204,7 @@ class UsuariosAdminScreen extends StatelessWidget {
   }
 }
 
-class _UsuarioTarjeta extends StatelessWidget {
+class _UsuarioTarjeta extends StatefulWidget {
   const _UsuarioTarjeta({required this.usuario, required this.esYo, required this.onTap});
 
   final Usuario usuario;
@@ -211,17 +212,46 @@ class _UsuarioTarjeta extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_UsuarioTarjeta> createState() => _UsuarioTarjetaState();
+}
+
+class _UsuarioTarjetaState extends State<_UsuarioTarjeta> {
+  bool _verCodigo = false;
+
+  Future<void> _cambiarCodigo() async {
+    final u = widget.usuario;
+    final ok = await mostrarCambioCodigo(context, u, pedirActual: widget.esYo);
+    if (ok && mounted) {
+      setState(() => _verCodigo = !u.esBeneficiario);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Código de ${u.nombre} actualizado')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final u = usuario;
+    final u = widget.usuario;
     final permisos = u.esBeneficiario
         ? 'Acceso total'
         : (u.permisos.isEmpty
             ? 'Solo atiende mesas y pedidos'
             : Permiso.values.where(u.permisos.contains).map((p) => p.nombre).join(' · '));
 
+    final String textoCodigo;
+    if (!u.tieneCodigo) {
+      textoCodigo = 'Sin código';
+    } else if (u.esBeneficiario) {
+      textoCodigo = 'Código: privado';
+    } else if (u.codigoVisible.isEmpty) {
+      textoCodigo = 'Código: cámbialo una vez para poder verlo';
+    } else {
+      textoCodigo = _verCodigo ? 'Código: ${u.codigoVisible}' : 'Código: ${'•' * u.codigoVisible.length}';
+    }
+
     return SoftCard(
-      onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      onTap: widget.onTap,
+      padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
       child: Row(
         children: [
           AvatarUsuario(
@@ -244,20 +274,12 @@ class _UsuarioTarjeta extends StatelessWidget {
                         style: AppText.title,
                       ),
                     ),
-                    if (esYo) ...[
+                    if (widget.esYo) ...[
                       const SizedBox(width: 6),
                       const StatusChip(
                         label: 'Tú',
                         fondo: AppColors.crema,
                         texto: AppColors.cafe,
-                      ),
-                    ],
-                    if (!u.tieneCodigo && u.activo) ...[
-                      const SizedBox(width: 6),
-                      const StatusChip(
-                        label: 'Sin código',
-                        fondo: Color(0xFFFFEBD0),
-                        texto: Color(0xFF9A5B13),
                       ),
                     ],
                   ],
@@ -269,9 +291,51 @@ class _UsuarioTarjeta extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppText.caption,
                 ),
+                if (u.activo) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.pin_outlined,
+                        size: 15,
+                        color: u.tieneCodigo ? AppColors.cafe : const Color(0xFF9A5B13),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          textoCodigo,
+                          style: AppText.caption.copyWith(
+                            color: AppColors.cafe,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: _verCodigo ? 1.5 : 0.5,
+                          ),
+                        ),
+                      ),
+                      if (!u.esBeneficiario && u.codigoVisible.isNotEmpty)
+                        InkWell(
+                          onTap: () => setState(() => _verCodigo = !_verCodigo),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              _verCodigo ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              size: 18,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
+          if (u.activo)
+            IconButton(
+              tooltip: 'Cambiar código',
+              onPressed: _cambiarCodigo,
+              icon: const Icon(Icons.password_rounded, color: AppColors.cafe),
+            ),
           const Icon(Icons.more_vert, color: AppColors.muted),
         ],
       ),

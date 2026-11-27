@@ -35,18 +35,11 @@ jobs:
           cp tool/main_template.dart lib/main.dart
           rm -f test/widget_test.dart
 
-      - name: Nombre visible de la app y permiso de internet
+      - name: Ajustes de Android (nombre, permisos, notificaciones)
         run: |
-          M=android/app/src/main/AndroidManifest.xml
-          sed -i 's/android:label="rim_coffee"/android:label="Rim Coffee"/' "$M"
-          grep -q 'android.permission.INTERNET' "$M" || sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' "$M"
-          head -5 "$M"
-
-      - name: Desactivar lint de Android en release (falla por un error de la herramienta)
-        run: |
-          F=android/build.gradle.kts; [ -f "$F" ] || F=android/build.gradle
-          printf '\nsubprojects {\n    tasks.matching { it.name.contains("lintVital") }.configureEach { enabled = false }\n}\n' >> "$F"
-          tail -4 "$F"
+          python3 tool/preparar_android.py
+          grep -n "uses-permission\|receiver" android/app/src/main/AndroidManifest.xml
+          grep -n "Desugaring\|desugar" android/app/build.gradle* || true
 
       - name: Llave de firma fija (para que la huella SHA-1 no cambie)
         run: |

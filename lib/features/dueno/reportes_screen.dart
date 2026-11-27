@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/constants/app_assets.dart';
+import 'package:rim_coffee/core/services/reporte_pdf.dart';
 import 'package:rim_coffee/core/services/reportes_service.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/state/pedidos_controller.dart';
@@ -24,6 +25,29 @@ class ReportesScreen extends StatefulWidget {
 
 class _ReportesScreenState extends State<ReportesScreen> {
   int _rango = 1;
+  bool _generando = false;
+
+  Future<void> _pdf(ResumenReporte r) async {
+    setState(() => _generando = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final negocio = NegocioController.instance.nombre;
+      final bytes = await ReportePdf.generar(r, negocio: negocio);
+      final hoy = DateTime.now();
+      final periodo = const ['dia', 'semana', 'mes'][_rango];
+      final archivo = 'Reporte-$periodo-${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-'
+          '${hoy.day.toString().padLeft(2, '0')}.pdf';
+      await ReportePdf.compartir(bytes, archivo);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo crear el PDF. Inténtalo de nuevo.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _generando = false);
+      }
+    }
+  }
 
   Future<void> _exportar(ResumenReporte r) async {
     final texto = r.aTexto(NegocioController.instance.nombre);
@@ -276,15 +300,25 @@ class _ReportesScreenState extends State<ReportesScreen> {
               ),
               const SizedBox(height: 16),
               RcButton(
-                label: 'Exportar reporte',
-                icon: Icons.ios_share,
+                label: 'Descargar reporte en PDF',
+                icon: Icons.picture_as_pdf_outlined,
+                cargando: _generando,
+                onPressed: () => _pdf(r),
+              ),
+              const SizedBox(height: 8),
+              RcButton(
+                label: 'Copiar como texto',
+                icon: Icons.copy_rounded,
+                style: RcButtonStyle.outline,
                 onPressed: () => _exportar(r),
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Center(
                   child: Text(
-                    'Copia el reporte como texto para enviarlo por mensaje o correo.',
+                    'El PDF incluye las gráficas del periodo elegido (hoy, semana o mes). '
+                    'Puedes guardarlo, imprimirlo o mandarlo por WhatsApp o correo.',
+                    textAlign: TextAlign.center,
                     style: AppText.caption,
                   ),
                 ),

@@ -33,13 +33,20 @@ class LogoNegocio extends StatelessWidget {
           ),
           child: propio
               ? AppImage(ruta, width: tamano, height: tamano, radius: tamano / 2)
-              : Padding(
-                  padding: EdgeInsets.all(tamano * 0.08),
-                  child: AppImage(
-                    ruta,
-                    width: tamano * 0.84,
-                    height: tamano * 0.84,
-                    fit: BoxFit.contain,
+              // El logo de Rim Coffee es cuadrado: se reduce para que quepa
+              // completo dentro del círculo, sin esquinas que se salgan.
+              : ClipOval(
+                  child: SizedBox(
+                    width: tamano,
+                    height: tamano,
+                    child: Center(
+                      child: AppImage(
+                        ruta,
+                        width: tamano * 0.66,
+                        height: tamano * 0.66,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
         );

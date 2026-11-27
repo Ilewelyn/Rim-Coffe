@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rim_coffee/app/route_args.dart';
 import 'package:rim_coffee/app/route_names.dart';
+import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/state/sesion_cliente.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
@@ -23,6 +24,8 @@ import 'package:rim_coffee/features/personal/personal_shell.dart';
 /// y protege las pantallas según la sesión y el modo (Personal, Dueño o Cliente).
 class AppRouter {
   AppRouter._();
+
+  static final ThemeData _temaMarca = buildThemeMarca();
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     final uri = Uri.parse(settings.name ?? '/');
@@ -84,6 +87,15 @@ class AppRouter {
       case Routes.splash:
       default:
         page = const SplashScreen();
+    }
+
+    // Antes de iniciar sesión se usan los colores de la marca Rim Coffee
+    // (turquesa); dentro de cada negocio, los colores café.
+    if (page is LoginScreen ||
+        page is RegistroScreen ||
+        page is RecuperarContrasenaScreen ||
+        page is SplashScreen) {
+      page = Theme(data: _temaMarca, child: page);
     }
 
     // Transición con desvanecido al pasar de la splash al login.

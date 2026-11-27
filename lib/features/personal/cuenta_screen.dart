@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/constants/app_assets.dart';
 import 'package:rim_coffee/core/models/usuario.dart';
+import 'package:rim_coffee/core/services/recordatorios.dart';
 import 'package:rim_coffee/core/state/config_controller.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
@@ -194,6 +195,27 @@ class CuentaScreen extends StatelessWidget {
                       ],
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SoftCard(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: StatefulBuilder(
+                  builder: (context, actualizar) => SwitchListTile(
+                    value: Recordatorios.activos,
+                    onChanged: (v) async {
+                      await Recordatorios.cambiarActivos(v);
+                      actualizar(() {});
+                    },
+                    activeTrackColor: AppColors.cafe,
+                    secondary: const Icon(Icons.notifications_active_outlined, color: AppColors.cafe),
+                    title: const Text('Recordatorios en este dispositivo', style: AppText.title),
+                    subtitle: const Text(
+                      'Avisa si una mesa lleva 2 horas abierta o si un pedido lleva '
+                      '15 minutos sin iniciar.',
+                      style: AppText.caption,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 18),

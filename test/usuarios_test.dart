@@ -39,6 +39,10 @@ void main() {
       isNull,
     );
 
+    // El beneficiario puede ver el código del administrador, no el suyo.
+    expect(u.porNombre('Ana')!.codigoVisible, '1470');
+    expect(u.actual!.codigoVisible, isEmpty);
+
     final ana = u.verificar('1470');
     expect(ana.resultado, ResultadoPin.correcto);
     expect(ana.usuario?.nombre, 'Ana');

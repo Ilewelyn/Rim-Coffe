@@ -53,6 +53,7 @@ class Usuario {
     this.codigoHuella = '',
     this.sal = '',
     this.activo = true,
+    this.codigoVisible = '',
     Set<Permiso>? permisos,
     DateTime? creadoEn,
   })  : permisos = permisos ?? {...permisosPorDefecto},
@@ -66,6 +67,10 @@ class Usuario {
 
   /// Falso cuando el beneficiario lo da de baja (se conserva en reportes).
   bool activo;
+
+  /// Código de un administrador, para que el beneficiario lo pueda ver
+  /// ('' si no se conoce). El de los beneficiarios nunca se guarda así.
+  String codigoVisible;
   Set<Permiso> permisos;
   final DateTime creadoEn;
 
@@ -104,6 +109,7 @@ class Usuario {
       codigoHuella: j['codigo'] as String? ?? '',
       sal: j['sal'] as String? ?? '',
       activo: j['activo'] as bool? ?? true,
+      codigoVisible: j['codigoVisible'] as String? ?? '',
       permisos: permisos,
       creadoEn: DateTime.tryParse(j['creadoEn'] as String? ?? ''),
     );
@@ -116,6 +122,7 @@ class Usuario {
         'codigo': codigoHuella,
         'sal': sal,
         'activo': activo,
+        if (codigoVisible.isNotEmpty) 'codigoVisible': codigoVisible,
         'permisos': permisos.map((p) => p.name).toList(),
         'creadoEn': creadoEn.toIso8601String(),
       };

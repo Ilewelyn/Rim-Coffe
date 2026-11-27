@@ -146,6 +146,7 @@ class UsuariosController extends ChangeNotifier {
       rol: rol,
       sal: sal,
       codigoHuella: codigo == null ? '' : Seguridad.huella(codigo.trim(), sal),
+      codigoVisible: rol == Rol.administrador && codigo != null ? codigo.trim() : '',
       permisos: permisos,
     );
   }
@@ -205,6 +206,7 @@ class UsuariosController extends ChangeNotifier {
         ..permisos = {...?permisos}
         ..sal = Seguridad.nuevaSal();
       existente.codigoHuella = Seguridad.huella(codigo.trim(), existente.sal);
+      existente.codigoVisible = rol == Rol.administrador ? codigo.trim() : '';
     } else {
       _items.add(_nuevo(limpio, rol, codigo, permisos: {...?permisos}));
     }
@@ -236,6 +238,9 @@ class UsuariosController extends ChangeNotifier {
         return 'Debe quedar al menos un beneficiario.';
       }
       usuario.rol = rol;
+      if (rol == Rol.beneficiario) {
+        usuario.codigoVisible = '';
+      }
     }
     if (permisos != null) {
       usuario.permisos = {...permisos};
@@ -259,6 +264,7 @@ class UsuariosController extends ChangeNotifier {
     }
     usuario.sal = Seguridad.nuevaSal();
     usuario.codigoHuella = Seguridad.huella(nuevo.trim(), usuario.sal);
+    usuario.codigoVisible = usuario.esBeneficiario ? '' : nuevo.trim();
     _guardar();
     notifyListeners();
     return null;

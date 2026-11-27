@@ -41,17 +41,18 @@ class AvisoInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = RcColores.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.crema,
+        color: c.suave,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: c.borde),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icono, size: 20, color: AppColors.cafe),
+          Icon(icono, size: 20, color: c.secundario),
           const SizedBox(width: 10),
           Expanded(child: Text(mensaje, style: AppText.caption)),
         ],

@@ -18,7 +18,7 @@ class QtySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.crema,
+        color: RcColores.of(context).suave,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -62,9 +62,13 @@ class _Boton extends StatelessWidget {
         height: 32,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: relleno ? AppColors.cafe : Colors.transparent,
+          color: relleno ? RcColores.of(context).secundario : Colors.transparent,
         ),
-        child: Icon(icono, size: 17, color: relleno ? Colors.white : AppColors.cafe),
+        child: Icon(
+          icono,
+          size: 17,
+          color: relleno ? Colors.white : RcColores.of(context).secundario,
+        ),
       ),
     );
   }

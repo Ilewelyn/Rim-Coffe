@@ -1,7 +1,7 @@
 name: rim_coffee
 description: Rim Coffee - tablet de mostrador para cafeterías (base de datos en la nube con Supabase y copia local SQLite, usuarios con código, pedidos por mesa, cobro y reportes).
 publish_to: 'none'
-version: 5.0.0+6
+version: 5.1.0+7
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -17,6 +17,10 @@ dependencies:
   sqflite: ^2.3.3
   path: ^1.8.0
   supabase_flutter: ^2.8.0
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  flutter_local_notifications: ^19.0.0
+  timezone: ">=0.10.0 <0.11.0"
 
 dev_dependencies:
   flutter_test:

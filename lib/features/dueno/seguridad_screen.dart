@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:rim_coffee/app/route_names.dart';
 import 'package:rim_coffee/app/theme.dart';
 import 'package:rim_coffee/core/nube/acceso.dart';
 import 'package:rim_coffee/core/nube/nube.dart';
 import 'package:rim_coffee/core/services/google_auth.dart';
-import 'package:rim_coffee/core/services/respaldo_service.dart';
 import 'package:rim_coffee/core/state/app_bootstrap.dart';
 import 'package:rim_coffee/core/state/negocio_controller.dart';
 import 'package:rim_coffee/core/state/usuarios_controller.dart';
@@ -16,8 +14,8 @@ import 'package:rim_coffee/features/dueno/salir_panel.dart';
 import 'package:rim_coffee/features/shared/usuario_form_sheet.dart';
 
 /// Seguridad (solo beneficiario): mi código, contraseña de la cuenta,
-/// cuenta de Google, respaldo de datos, datos de demostración, borrar todo
-/// y cerrar sesión.
+/// cuenta de Google, estado de la base de datos, datos de demostración y
+/// cerrar sesión.
 class SeguridadScreen extends StatelessWidget {
   const SeguridadScreen({super.key});
 
@@ -77,32 +75,6 @@ class SeguridadScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _exportar(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: RespaldoService.exportar()));
-    if (context.mounted) {
-      _aviso(
-        context,
-        'Respaldo copiado. Pégalo en un archivo o mensaje y guárdalo en un lugar seguro.',
-      );
-    }
-  }
-
-  Future<void> _importar(BuildContext context) async {
-    final texto = await showDialog<String>(
-      context: context,
-      builder: (_) => const _ImportarDialog(),
-    );
-    if (texto == null || !context.mounted) {
-      return;
-    }
-    final error = RespaldoService.importar(texto);
-    if (error != null) {
-      _aviso(context, error);
-      return;
-    }
-    Navigator.of(context).pushNamedAndRemoveUntil(Routes.splash, (ruta) => false);
-  }
-
   Future<void> _restablecer(BuildContext context) async {
     final ok = await _confirmar(
       context,
@@ -115,23 +87,6 @@ class SeguridadScreen extends StatelessWidget {
     if (ok && context.mounted) {
       AppBootstrap.restablecerDemo();
       _aviso(context, 'Datos de demostración restablecidos');
-    }
-  }
-
-  Future<void> _borrarTodo(BuildContext context) async {
-    final ok = await _confirmar(
-      context,
-      titulo: 'Borrar todos los datos',
-      mensaje: 'Se borra todo lo guardado en ESTE dispositivo y se cierra la sesión. '
-          'Los datos en la nube se conservan: al volver a iniciar sesión se descargan.',
-      boton: 'Borrar de este dispositivo',
-      peligro: true,
-    );
-    if (ok && context.mounted) {
-      final navegador = Navigator.of(context);
-      await AccesoNube.salir();
-      AppBootstrap.borrarTodo();
-      navegador.pushNamedAndRemoveUntil(Routes.login, (ruta) => false);
     }
   }
 
@@ -207,32 +162,6 @@ class SeguridadScreen extends StatelessWidget {
           const _BaseDatos(),
           const SizedBox(height: 14),
           _Grupo(
-            titulo: 'Respaldo',
-            hijos: [
-              _Accion(
-                icono: Icons.upload_outlined,
-                titulo: 'Exportar datos',
-                detalle: 'Copia todo como texto para guardarlo (WhatsApp, correo o una nota).',
-                onTap: () => _exportar(context),
-              ),
-              _Accion(
-                icono: Icons.download_outlined,
-                titulo: 'Importar datos',
-                detalle: 'Pega un respaldo para recuperar o cargar información.',
-                onTap: () => _importar(context),
-              ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(4, 4, 4, 0),
-                child: Text(
-                  'Desinstalar la app o borrar sus datos elimina la información. '
-                  'Contraseña y códigos van cifrados, pero guarda el respaldo en un lugar seguro.',
-                  style: AppText.caption,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _Grupo(
             titulo: 'Datos',
             hijos: [
               _Accion(
@@ -240,13 +169,6 @@ class SeguridadScreen extends StatelessWidget {
                 titulo: 'Restablecer datos de demostración',
                 detalle: 'Productos, personal e historial de ejemplo.',
                 onTap: () => _restablecer(context),
-              ),
-              _Accion(
-                icono: Icons.delete_forever_outlined,
-                titulo: 'Borrar todos los datos',
-                detalle: 'Deja la app como recién instalada.',
-                peligro: true,
-                onTap: () => _borrarTodo(context),
               ),
             ],
           ),
@@ -528,74 +450,3 @@ class _BaseDatosState extends State<_BaseDatos> {
   }
 }
 
-/// Ventana para pegar un respaldo.
-class _ImportarDialog extends StatefulWidget {
-  const _ImportarDialog();
-
-  @override
-  State<_ImportarDialog> createState() => _ImportarDialogState();
-}
-
-class _ImportarDialogState extends State<_ImportarDialog> {
-  final TextEditingController _texto = TextEditingController();
-
-  @override
-  void dispose() {
-    _texto.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pegar() async {
-    final datos = await Clipboard.getData(Clipboard.kTextPlain);
-    if (datos?.text != null) {
-      setState(() => _texto.text = datos!.text!);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      title: const Text('Importar datos'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Pega aquí el respaldo. Se reemplazan las secciones que traiga (negocio, '
-            'menú, mesas, usuarios, ventas…) en todos los dispositivos; lo que no '
-            'traiga se conserva.',
-            style: AppText.caption,
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _texto,
-            maxLines: 5,
-            style: const TextStyle(fontSize: 12),
-            decoration: rcInput(hint: 'Texto del respaldo'),
-          ),
-          TextButton.icon(
-            onPressed: _pegar,
-            icon: const Icon(Icons.paste, size: 18, color: AppColors.cafe),
-            label: const Text('Pegar del portapapeles', style: TextStyle(color: AppColors.cafe)),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (_texto.text.trim().isNotEmpty) {
-              Navigator.of(context).pop(_texto.text);
-            }
-          },
-          style: FilledButton.styleFrom(backgroundColor: AppColors.cafe),
-          child: const Text('Importar'),
-        ),
-      ],
-    );
-  }
-}

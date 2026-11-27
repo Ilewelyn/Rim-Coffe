@@ -148,10 +148,10 @@ class _UsuarioFormState extends State<_UsuarioForm> {
                   showSelectedIcon: false,
                   onSelectionChanged: (s) => setState(() => _rol = s.first),
                   style: SegmentedButton.styleFrom(
-                    selectedBackgroundColor: AppColors.cafe,
+                    selectedBackgroundColor: RcColores.of(context).secundario,
                     selectedForegroundColor: Colors.white,
-                    foregroundColor: AppColors.cafe,
-                    side: const BorderSide(color: AppColors.latte),
+                    foregroundColor: RcColores.of(context).secundario,
+                    side: BorderSide(color: RcColores.of(context).borde),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -200,7 +200,7 @@ class _UsuarioFormState extends State<_UsuarioForm> {
                               _permisos.remove(p);
                             }
                           }),
-                          activeTrackColor: AppColors.cafe,
+                          activeTrackColor: RcColores.of(context).secundario,
                           title: Text(p.nombre, style: AppText.title),
                           subtitle: Text(p.detalle, style: AppText.caption),
                         ),
@@ -335,7 +335,7 @@ class _CambioCodigoDialogState extends State<_CambioCodigoDialog> {
         ),
         FilledButton(
           onPressed: _guardar,
-          style: FilledButton.styleFrom(backgroundColor: AppColors.cafe),
+          style: FilledButton.styleFrom(backgroundColor: RcColores.of(context).secundario),
           child: const Text('Guardar'),
         ),
       ],
