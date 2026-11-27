@@ -37,6 +37,29 @@ class _RevisarEnviarScreenState extends State<RevisarEnviarScreen> {
     super.dispose();
   }
 
+  Future<void> _confirmarVaciar(BuildContext context, CarritoController carrito) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Vaciar tu pedido?'),
+        content: const Text('Se quitan todos los productos que elegiste.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Vaciar'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      carrito.vaciar();
+    }
+  }
+
   void _enviar() {
     if (!(_formulario.currentState?.validate() ?? false)) {
       return;
@@ -64,6 +87,15 @@ class _RevisarEnviarScreenState extends State<RevisarEnviarScreen> {
   @override
   Widget build(BuildContext context) {
     final carrito = CarritoController.instance;
+    // Se vuelve a dibujar con cada cambio del carrito (agregar, quitar,
+    // cambiar tamaño o cantidad).
+    return ListenableBuilder(
+      listenable: carrito,
+      builder: (context, _) => _contenido(context, carrito),
+    );
+  }
+
+  Widget _contenido(BuildContext context, CarritoController carrito) {
     final lineas = carrito.lineas;
 
     return Scaffold(
@@ -76,11 +108,27 @@ class _RevisarEnviarScreenState extends State<RevisarEnviarScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
           children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text(
+                'Revisa tu pedido. Con el lápiz cambias tamaño o extras, con − y + la '
+                'cantidad, y con el bote lo quitas.',
+                style: AppText.caption,
+              ),
+            ),
             for (final linea in lineas)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _LineaTarjeta(linea: linea),
+                child: _LineaTarjeta(key: ValueKey(linea.clave), linea: linea),
               ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _confirmarVaciar(context, carrito),
+                icon: const Icon(Icons.remove_shopping_cart_outlined, size: 18),
+                label: const Text('Vaciar mi pedido'),
+              ),
+            ),
             const SizedBox(height: 4),
             SoftCard(
               padding: const EdgeInsets.all(16),
@@ -175,7 +223,7 @@ class _RevisarEnviarScreenState extends State<RevisarEnviarScreen> {
 }
 
 class _LineaTarjeta extends StatelessWidget {
-  const _LineaTarjeta({required this.linea});
+  const _LineaTarjeta({super.key, required this.linea});
 
   final LineaCarrito linea;
 
@@ -236,7 +284,20 @@ class _LineaTarjeta extends StatelessWidget {
                 tooltip: 'Quitar',
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.danger),
-                onPressed: () => carrito.quitar(linea),
+                onPressed: () {
+                  carrito.quitar(linea);
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      SnackBar(
+                        content: Text('${linea.producto.nombre} se quitó de tu pedido'),
+                        action: SnackBarAction(
+                          label: 'Deshacer',
+                          onPressed: () => carrito.agregarLinea(linea),
+                        ),
+                      ),
+                    );
+                },
               ),
             ],
           ),
